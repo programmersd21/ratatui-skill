@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 204" width="880" height="204" role="img" aria-labelledby="title desc">
+  <title id="title">Ratatui Skill Workflow</title>
+  <desc id="desc">Four-step process for AI-assisted Ratatui development: Research, Specify, Implement, and Verify.</desc>
+  <style>
+    text {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .kicker {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      fill: #71717a;
+    }
+    .heading {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      fill: #09090b;
+    }
+    .subhead {
+      font-size: 12.5px;
+      fill: #71717a;
+    }
+    .step-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      fill: #18181b;
+    }
+    .step-desc {
+      font-size: 11px;
+      fill: #71717a;
+    }
+    .track {
+      stroke: #e4e4e7;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+    }
+    .progress {
+      stroke: #18181b;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-dasharray: 680;
+      stroke-dashoffset: 680;
+      animation: draw 8s linear infinite;
+    }
+    .runner {
+      animation: travel 8s linear infinite;
+    }
+    .ring {
+      fill: #ffffff;
+      stroke: #e4e4e7;
+      stroke-width: 1.5;
+      animation: pulse-ring 8s ease-out infinite;
+    }
+    .core {
+      fill: #a1a1aa;
+      animation: pulse-core 8s ease-out infinite;
+    }
+
+    /* Exact geometric sync: 680px travel over 7.2s (90% of 8s loop), 0.8s hold/fade.
+       Nodes at x = 100 (0%), 326.67 (30%), 553.33 (60%), 780 (90%) */
+    .n1 { animation-delay: 0s; }
+    .n2 { animation-delay: 2.4s; }
+    .n3 { animation-delay: 4.8s; }
+    .n4 { animation-delay: 7.2s; }
+
+    @keyframes draw {
+      0% { stroke-dashoffset: 680; opacity: 1; }
+      90% { stroke-dashoffset: 0; opacity: 1; }
+      96% { stroke-dashoffset: 0; opacity: 0; }
+      100% { stroke-dashoffset: 680; opacity: 0; }
+    }
+    @keyframes travel {
+      0% { transform: translateX(0px); opacity: 1; }
+      90% { transform: translateX(680px); opacity: 1; }
+      96% { transform: translateX(680px); opacity: 0; }
+      100% { transform: translateX(0px); opacity: 0; }
+    }
+    @keyframes pulse-ring {
+      0%, 14%, 100% { stroke: #e4e4e7; }
+      2%, 10% { stroke: #18181b; }
+    }
+    @keyframes pulse-core {
+      0%, 14%, 100% { fill: #a1a1aa; }
+      2%, 10% { fill: #18181b; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .progress { stroke-dashoffset: 0; animation: none; }
+      .runner { display: none; }
+      .ring { stroke: #18181b; animation: none; }
+      .core { fill: #18181b; animation: none; }
+    }
+  </style>
+
+  
+  <text x="24" y="29" class="kicker">RATATUI SKILL</text>
+  <text x="856" y="29" text-anchor="end" class="kicker">TESTED WORKFLOW</text>
+
+  <text x="24" y="66" class="heading">Don’t guess. Build it right.</text>
+  <text x="24" y="89" class="subhead">A deliberate process for AI-assisted Ratatui development.</text>
+
+  
+  <line x1="100" y1="126" x2="780" y2="126" class="track" />
+  <line x1="100" y1="126" x2="780" y2="126" class="progress" />
+
+  
+  <g class="runner">
+    <circle cx="100" cy="126" r="4" fill="#18181b" />
+    <circle cx="100" cy="126" r="1.5" fill="#ffffff" />
+  </g>
+
+  
+  <g transform="translate(100, 126)">
+    <circle r="8.5" class="ring n1" />
+    <circle r="3" class="core n1" />
+    <text y="29" text-anchor="middle" class="step-title">Research</text>
+    <text y="47" text-anchor="middle" class="step-desc">Current APIs &amp; versions</text>
+  </g>
+
+  
+  <g transform="translate(326.67, 126)">
+    <circle r="8.5" class="ring n2" />
+    <circle r="3" class="core n2" />
+    <text y="29" text-anchor="middle" class="step-title">Specify</text>
+    <text y="47" text-anchor="middle" class="step-desc">Design before code</text>
+  </g>
+
+  
+  <g transform="translate(553.33, 126)">
+    <circle r="8.5" class="ring n3" />
+    <circle r="3" class="core n3" />
+    <text y="29" text-anchor="middle" class="step-title">Implement</text>
+    <text y="47" text-anchor="middle" class="step-desc">Start from working code</text>
+  </g>
+
+  
+  <g transform="translate(780, 126)">
+    <circle r="8.5" class="ring n4" />
+    <circle r="3" class="core n4" />
+    <text y="29" text-anchor="middle" class="step-title">Verify</text>
+    <text y="47" text-anchor="middle" class="step-desc">Test before done</text>
+  </g>
+
+  
+  <line x1="24" y1="190" x2="856" y2="190" stroke="#e4e4e7" stroke-width="1" />
+</svg>
