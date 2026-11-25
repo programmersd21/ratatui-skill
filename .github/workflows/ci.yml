@@ -1,0 +1,75 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dirview:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: skills/ratatui/templates/dirview
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: skills/ratatui/templates/dirview
+
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --locked
+      - run: cargo build --locked
+
+      - name: pty smoke test
+        run: python3 ../../scripts/pty-smoke.py target/debug/dirview .
+
+      - name: lint slop
+        run: ../../scripts/lint-slop.sh .
+
+  todo:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: todo
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: todo
+
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --locked
+      - run: cargo build --locked
+
+      - name: pty smoke test
+        run: python3 ../skills/ratatui/scripts/pty-smoke.py target/debug/todo
+
+      - name: lint slop
+        run: ../skills/ratatui/scripts/lint-slop.sh .
+
+  repo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: check markdown headers have no emoji
+        run: |
+          if head -20 README.md | grep -qP '^#+ .*[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]'; then
+            echo "emoji found in README header" && exit 1
+          fi

@@ -1,0 +1,34 @@
+name: Bug report
+description: Something in the skill, template or demo does not work
+title: "fix: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please include the exact command and output.
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Skill, template, demo app, CI, or docs
+      placeholder: todo/src/store.rs
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you expect and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Commands, Rust version, terminal, and OS
+      placeholder: |
+        cargo test
+        rustc 1.100.0
+    validations:
+      required: true

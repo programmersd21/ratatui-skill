@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question about using the skill
+    url: https://github.com/programmersd21/ratatui-skill/discussions
+    about: Ask a question in Discussions instead of opening an issue.
