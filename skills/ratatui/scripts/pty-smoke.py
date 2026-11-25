@@ -1,75 +1,185 @@
 #!/usr/bin/env python3
-"""Run a TUI binary in a real pseudo-terminal, send keys, check it exits cleanly.
+"""Run a TUI binary in a pseudo-terminal and verify terminal behavior.
 
-usage: pty-smoke.py BINARY [ARGS...]
+The checks are split into two groups.
 
-Checks: it enters and leaves the alternate screen, exits 0 after `q`, exits 0
-on Ctrl-C, survives a tiny terminal, and drops color under NO_COLOR.
+Universal checks apply to every well-behaved ratatui application: the process
+starts, enters and restores the alternate screen, shuts down cleanly when told
+to quit, and survives a tiny terminal. They make no assumption about colors,
+messages, or which keys the application binds.
+
+Application-specific checks are opt-in through --keys, --quit-keys and
+--tiny-text. They test a particular app's keymap and wording, so a valid app
+with a different style or keymap is never rejected for those reasons.
+
+usage: pty-smoke.py [OPTIONS] BINARY [ARGS...]
 """
-import fcntl, os, pty, select, struct, subprocess, sys, termios, time
+import argparse
+import fcntl
+import os
+import pty
+import re
+import select
+import struct
+import subprocess
+import sys
+import termios
+import time
 
-def run(cmd, keys, size=(30, 100), env=None):
-    master, slave = pty.openpty()
-    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", size[0], size[1], 0, 0))
-    e = dict(os.environ, TERM="xterm-256color")
-    e.pop("NO_COLOR", None)
-    e.update(env or {})
-    proc = subprocess.Popen(cmd, stdin=slave, stdout=slave, stderr=slave, env=e)
-    os.close(slave)
-    out = b""
+ALT_SCREEN_ENTER = b"\x1b[?1049h"
+ALT_SCREEN_LEAVE = b"\x1b[?1049l"
+# Any SGR foreground/background color code: 30-37, 90-97, 38;... and 40-47,
+# 100-107, 48;... . Not tied to a particular hue.
+COLOR_CODE = re.compile(rb"\x1b\[[0-9;]*(?:3[0-7]|9[0-7]|38;[0-9;]+|4[0-7]|10[0-7]|48;[0-9;]+)m")
 
-    def drain(seconds):
-        nonlocal out
+
+def clean_env(extra=None):
+    env = {k: os.environ[k] for k in ("PATH", "HOME", "LANG", "LC_ALL") if k in os.environ}
+    env["TERM"] = "xterm-256color"
+    env.pop("COLORTERM", None)
+    for key in ("NO_COLOR", "CLICOLOR", "CLICOLOR_FORCE", "FORCE_COLOR"):
+        env.pop(key, None)
+    env.update(extra or {})
+    return env
+
+
+class Session:
+    def __init__(self, cmd, size=(24, 80), env=None, timeout=5.0, sigint=False):
+        self.cmd = cmd
+        self.timeout = timeout
+        self.out = b""
+        self.master = None
+        self.proc = None
+        self.master, slave = pty.openpty()
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", size[0], size[1], 0, 0))
+        try:
+            kwargs = {"stdin": slave, "stdout": slave, "stderr": slave, "env": clean_env(env)}
+            if sigint and hasattr(os, "setsid"):
+                kwargs["start_new_session"] = True
+            self.proc = subprocess.Popen(cmd, **kwargs)
+        finally:
+            os.close(slave)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        if self.proc is not None and self.proc.poll() is None:
+            self.proc.kill()
+            self.proc.wait()
+        if self.master is not None:
+            os.close(self.master)
+            self.master = None
+        return False
+
+    def drain(self, seconds):
         end = time.time() + seconds
         while time.time() < end:
-            ready, _, _ = select.select([master], [], [], 0.05)
+            ready, _, _ = select.select([self.master], [], [], 0.05)
             if ready:
                 try:
-                    out += os.read(master, 65536)
+                    chunk = os.read(self.master, 65536)
                 except OSError:
                     return
+                if not chunk:
+                    return
+                self.out += chunk
 
-    drain(0.8)
-    for key in keys:
-        os.write(master, key.encode())
-        drain(0.25)
-    try:
-        code = proc.wait(timeout=3)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        code = "TIMEOUT"
-    drain(0.2)
-    return code, out
+    def wait_ready(self):
+        # Read until the alternate-screen escape appears, instead of guessing a
+        # fixed warm-up interval. Fall back to a short drain for apps that use a
+        # different viewport.
+        end = time.time() + self.timeout
+        while time.time() < end:
+            self.drain(0.05)
+            if ALT_SCREEN_ENTER in self.out or self.proc.poll() is not None:
+                break
+        # Give the first frame time to draw the body after entering the screen.
+        self.drain(0.2)
+
+    def send(self, keys, settle=0.2):
+        for key in keys:
+            try:
+                os.write(self.master, key.encode())
+            except OSError:
+                return
+            self.drain(settle)
+
+    def finish(self):
+        try:
+            return self.proc.wait(timeout=self.timeout)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+            self.proc.wait()
+            return "TIMEOUT"
+
+    def exit(self, keys, sigint=False):
+        self.wait_ready()
+        if sigint and hasattr(os, "setsid"):
+            self.proc.send_signal(signal.SIGINT)
+        else:
+            self.send(keys)
+        code = self.finish()
+        self.drain(0.2)
+        return code, self.out
+
 
 def main():
-    cmd = sys.argv[1:]
-    if not cmd:
-        sys.exit(__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--quit-keys", default="q", help="keys that quit the app (default: q)")
+    parser.add_argument("--keys", default="", help="app-specific interaction sequence to send before quitting")
+    parser.add_argument("--tiny-text", default="", help="optional expected text in a tiny terminal")
+    parser.add_argument("--width", type=int, default=80, help="normal terminal width")
+    parser.add_argument("--height", type=int, default=24, help="normal terminal height")
+    parser.add_argument("--timeout", type=float, default=5.0, help="seconds to wait for events")
+    parser.add_argument("binary", nargs=argparse.REMAINDER, help="binary and its arguments")
+    args = parser.parse_args()
+
+    if not args.binary:
+        parser.error("BINARY is required")
+
+    quit_keys = list(args.quit_keys)
     failures = []
 
-    def check(name, ok):
+    def check(name, ok, detail=""):
         print(("ok    " if ok else "FAIL  ") + name)
         if not ok:
             failures.append(name)
+            if detail:
+                print("       " + detail)
 
-    code, out = run(cmd, ["j", "?", "\x1b", "/", "a", "\r", "q"])
-    check("quits with q", code == 0)
-    check("enters alternate screen", b"\x1b[?1049h" in out)
-    check("restores terminal", b"\x1b[?1049l" in out)
-    code, _ = run(cmd, ["\x03"])
-    check("quits with Ctrl-C", code == 0)
-    code, out = run(cmd, ["q"], size=(5, 20))
-    # The terminal diff skips blank cells, so words arrive separately; look for
-    # the one line that is written in a single piece.
-    check("survives a tiny terminal", code == 0 and b"have 20x5" in out)
-    _, color = run(cmd, ["q"])
-    _, mono = run(cmd, ["q"], env={"NO_COLOR": "1"})
-    # ratatui writes ANSI cyan as 38;5;6, possibly combined with other codes.
-    def has_cyan(data):
-        return b"38;5;6" in data or b"[36m" in data
+    size = (args.height, args.width)
+    code, out = Session(args.binary, size=size, timeout=args.timeout).exit(list(args.keys) + quit_keys)
+    check("starts and exits cleanly", code == 0, f"exit={code}, output={out[:300]!r}")
+    check("enters alternate screen", ALT_SCREEN_ENTER in out, f"output={out[:300]!r}")
+    check("restores terminal", ALT_SCREEN_LEAVE in out, f"output={out[:300]!r}")
 
-    check("emits color by default", has_cyan(color))
-    check("no color under NO_COLOR", not has_cyan(mono))
+    code, small = Session(args.binary, size=(5, 20), timeout=args.timeout).exit(quit_keys)
+    check("survives a tiny terminal", code == 0, f"exit={code}")
+    if args.tiny_text:
+        # Terminal diffs position words separately, so strip CSI sequences and
+        # look for each word independently instead of one contiguous byte string.
+        visible = re.sub(rb"\x1b\[[0-9;?]*[ -/]*[@-~]", b"", small)
+        words = [w.encode() for w in args.tiny_text.split() if w]
+        check(
+            "tiny terminal reports a size problem",
+            bool(words) and all(w in visible for w in words),
+            f"visible={visible[:300]!r}",
+        )
+
+    # This is the Ctrl-C keymap event (byte 3 decoded by crossterm), not a real
+    # SIGINT. A TUI without a SIGINT handler is normally killed by a signal, so
+    # requiring a clean exit there would reject valid applications.
+    code, _ = Session(args.binary, size=size, timeout=args.timeout).exit(["\x03"])
+    check("exits cleanly on the Ctrl-C keymap event", code == 0, f"exit={code}")
+
+    _, color = Session(args.binary, size=size, timeout=args.timeout).exit(quit_keys)
+    _, mono = Session(args.binary, size=size, timeout=args.timeout, env={"NO_COLOR": "1"}).exit(quit_keys)
+    check("emits color by default", bool(COLOR_CODE.search(color)), f"output={color[:300]!r}")
+    check("no color under NO_COLOR", not COLOR_CODE.search(mono), f"output={mono[:300]!r}")
+
     sys.exit(1 if failures else 0)
 
-main()
+
+if __name__ == "__main__":
+    main()
