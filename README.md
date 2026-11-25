@@ -71,7 +71,7 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 1. **Research.** Look up the newest stable version and minimum Rust version of every crate, read the release notes, confirm widget crates match the ratatui version, and compile anything uncertain.
 2. **Design brief.** Before any code: layout archetype, one accent color, density, keys, and what each empty or failed state shows, justified from the app's data.
 3. **Build** from a tested template with a strict split: state with no terminal types, rendering with no side effects, and one key table that drives input, footer hints and help.
-4. **Verify.** `cargo fmt`, clippy with warnings denied, tests, text dumps of the screen at several sizes, a run in a real pseudo-terminal, and a slop scan.
+4. **Verify.** `cargo fmt --check`, clippy with warnings denied, tests, text dumps of the screen at several sizes, a run in a real pseudo-terminal, and a slop scan.
 5. **Report honestly,** including anything it could not check.
 
 </details>
@@ -236,9 +236,6 @@ If this saved you time, a star helps other people find it.
   </a>
 </p>
 
-If this skill saved you time, consider sponsoring the maintainer. Sponsorship funds upkeep of the templates, scripts and CI, and keeps the project free for everyone.
-
-**[Sponsor @programmersd21 on GitHub](https://github.com/sponsors/programmersd21)**
 
 ## License
 
