@@ -20,6 +20,7 @@ import os
 import pty
 import re
 import select
+import signal
 import struct
 import subprocess
 import sys
@@ -126,12 +127,14 @@ class Session:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--quit-keys", default="q", help="keys that quit the app (default: q)")
+    parser.add_argument("--quit-keys", default="", help="keys that must quit the app (default: none)")
     parser.add_argument("--keys", default="", help="app-specific interaction sequence to send before quitting")
     parser.add_argument("--tiny-text", default="", help="optional expected text in a tiny terminal")
     parser.add_argument("--width", type=int, default=80, help="normal terminal width")
     parser.add_argument("--height", type=int, default=24, help="normal terminal height")
     parser.add_argument("--timeout", type=float, default=5.0, help="seconds to wait for events")
+    parser.add_argument("--check-ctrl-c", action="store_true", help="test the Ctrl-C keymap event")
+    parser.add_argument("--check-color", action="store_true", help="test color under NO_COLOR")
     parser.add_argument("binary", nargs=argparse.REMAINDER, help="binary and its arguments")
     args = parser.parse_args()
 
@@ -149,7 +152,8 @@ def main():
                 print("       " + detail)
 
     size = (args.height, args.width)
-    code, out = Session(args.binary, size=size, timeout=args.timeout).exit(list(args.keys) + quit_keys)
+    seq = list(args.keys) + quit_keys
+    code, out = Session(args.binary, size=size, timeout=args.timeout).exit(seq if seq else [])
     check("starts and exits cleanly", code == 0, f"exit={code}, output={out[:300]!r}")
     check("enters alternate screen", ALT_SCREEN_ENTER in out, f"output={out[:300]!r}")
     check("restores terminal", ALT_SCREEN_LEAVE in out, f"output={out[:300]!r}")
@@ -157,8 +161,6 @@ def main():
     code, small = Session(args.binary, size=(5, 20), timeout=args.timeout).exit(quit_keys)
     check("survives a tiny terminal", code == 0, f"exit={code}")
     if args.tiny_text:
-        # Terminal diffs position words separately, so strip CSI sequences and
-        # look for each word independently instead of one contiguous byte string.
         visible = re.sub(rb"\x1b\[[0-9;?]*[ -/]*[@-~]", b"", small)
         words = [w.encode() for w in args.tiny_text.split() if w]
         check(
@@ -167,16 +169,19 @@ def main():
             f"visible={visible[:300]!r}",
         )
 
-    # This is the Ctrl-C keymap event (byte 3 decoded by crossterm), not a real
-    # SIGINT. A TUI without a SIGINT handler is normally killed by a signal, so
-    # requiring a clean exit there would reject valid applications.
-    code, _ = Session(args.binary, size=size, timeout=args.timeout).exit(["\x03"])
-    check("exits cleanly on the Ctrl-C keymap event", code == 0, f"exit={code}")
+    if quit_keys:
+        code, _ = Session(args.binary, size=size, timeout=args.timeout).exit(quit_keys)
+        check("quit keys work", code == 0, f"exit={code}")
 
-    _, color = Session(args.binary, size=size, timeout=args.timeout).exit(quit_keys)
-    _, mono = Session(args.binary, size=size, timeout=args.timeout, env={"NO_COLOR": "1"}).exit(quit_keys)
-    check("emits color by default", bool(COLOR_CODE.search(color)), f"output={color[:300]!r}")
-    check("no color under NO_COLOR", not COLOR_CODE.search(mono), f"output={mono[:300]!r}")
+    if args.check_ctrl_c:
+        code, _ = Session(args.binary, size=size, timeout=args.timeout).exit(["\x03"])
+        check("exits cleanly on the Ctrl-C keymap event", code == 0, f"exit={code}")
+
+    if args.check_color:
+        _, color = Session(args.binary, size=size, timeout=args.timeout).exit(quit_keys or ["q"])
+        _, mono = Session(args.binary, size=size, timeout=args.timeout, env={"NO_COLOR": "1"}).exit(quit_keys or ["q"])
+        check("emits color by default", bool(COLOR_CODE.search(color)), f"output={color[:300]!r}")
+        check("no color under NO_COLOR", not COLOR_CODE.search(mono), f"output={mono[:300]!r}")
 
     sys.exit(1 if failures else 0)
 

@@ -221,7 +221,8 @@ The tells and principles come from public discussions of AI-generated projects a
 Issues and pull requests are welcome. Good first contributions: a pitfall you hit with a ratatui release, a slop tell the scanner misses, or a second template (an async dashboard is the most requested gap). Run the checks before opening a PR:
 
 ```bash
-cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+cd skills/ratatui/templates/dirview && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+cd todo && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 python3 skills/ratatui/scripts/pty-smoke.py target/debug/<binary>
 skills/ratatui/scripts/lint-slop.sh .
 ```

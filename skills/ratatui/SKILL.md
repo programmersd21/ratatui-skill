@@ -22,6 +22,13 @@ Run these. Quote what they return when you pick versions; do not paraphrase from
 scripts/crate-versions.sh ratatui color-eyre unicode-width   # plus every other crate you plan to use
 
 All paths below are relative to this skill's installed directory.
+
+Resolving the installed directory: this skill is invoked from an agent that may
+be working in a project directory unrelated to the skill. Compute the skill
+directory from the skill file location rather than from the current working
+directory, e.g. `SKILL_DIR=$(dirname "$(realpath SKILL.md)")` or, in Python,
+`pathlib.Path(__file__).resolve().parent`. Run every bundled script through
+that path, e.g. `$SKILL_DIR/scripts/crate-versions.sh`.
 ```
 
 - That prints the newest stable version and the minimum Rust version of each crate. Use those, and set `rust-version` in `Cargo.toml` to the highest one you depend on.
