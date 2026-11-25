@@ -20,6 +20,8 @@ Run these. Quote what they return when you pick versions; do not paraphrase from
 
 ```bash
 scripts/crate-versions.sh ratatui color-eyre unicode-width   # plus every other crate you plan to use
+
+All paths below are relative to this skill's installed directory.
 ```
 
 - That prints the newest stable version and the minimum Rust version of each crate. Use those, and set `rust-version` in `Cargo.toml` to the highest one you depend on.
@@ -92,7 +94,7 @@ cargo test
 
 Then look at it:
 
-1. **Dump screens.** Render the real screens through `ratatui::backend::TestBackend` and read the text at several sizes (see `examples/dump.rs`): at least 40x8, 80x24 and 200x60, plus the empty, error and help states. Fix anything misaligned, clipped or confusing.
+1. **Dump screens.** Render the real screens through `ratatui::backend::TestBackend` and read the text at several sizes (see `templates/dirview/examples/dump.rs`): at least 40x8, 80x24 and 200x60, plus the empty, error and help states. Fix anything misaligned, clipped or confusing.
 2. **Run it in a real terminal.** `scripts/pty-smoke.py PATH/TO/BINARY` runs the binary in a pseudo-terminal, sends keys, and checks that it enters and restores the alternate screen, quits on `q` and Ctrl-C, survives a tiny terminal, and drops color under `NO_COLOR`. A TUI cannot be run through a plain pipe; use the PTY.
 3. **Scan for slop.** `scripts/lint-slop.sh PROJECT_DIR` must print `clean`.
 

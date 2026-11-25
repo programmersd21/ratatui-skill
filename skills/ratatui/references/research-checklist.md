@@ -1,12 +1,12 @@
 # Research checklist
 
-Use this in step 1. Facts below were checked by building and testing `templates/dirview` against ratatui 0.30.2 on Rust 1.97 (November 2026). Versions will move on: rerun `scripts/crate-versions.sh` instead of trusting any number here.
+Use this in step 1. Facts below were checked by building and testing `templates/dirview` against ratatui 0.30.2 at its tested MSRV of 1.88 (November 2026). Versions will move on: rerun `skills/ratatui/scripts/crate-versions.sh` instead of trusting any number here.
 
 ## Finding out what is current
 
 | Question | How to answer it |
 |---|---|
-| Latest stable version and minimum Rust | `scripts/crate-versions.sh NAME...` |
+| Latest stable version and minimum Rust | `skills/ratatui/scripts/crate-versions.sh NAME...` |
 | Does my toolchain meet it? | `cargo --version`, compare with `rust-version` |
 | What changed since I last used this? | The crate's `CHANGELOG.md` / `BREAKING-CHANGES.md` on GitHub; web search for the release notes |
 | Exact signature of a method | docs.rs for the exact version, or `cargo doc --open`, or read it under `~/.cargo/registry/src/*/ratatui-*/` after a `cargo fetch` |

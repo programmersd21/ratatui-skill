@@ -37,8 +37,8 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
 1. Copy the skill into your assistant's skills directory. For Claude Code:
 
    ```bash
-   cp -r skills/ratatui ~/.claude/skills/      # all projects
-   cp -r skills/ratatui .claude/skills/        # one project
+   mkdir -p ~/.claude/skills && cp -r skills/ratatui ~/.claude/skills/   # all projects
+   mkdir -p .claude/skills && cp -r skills/ratatui .claude/skills/         # one project
    ```
 
 2. Ask for a terminal UI:
@@ -152,7 +152,7 @@ cargo run -- .
 <summary><b>Does it only work with Claude Code?</b></summary>
 <br>
 
-**No — any assistant that can run commands works.**
+**No. Any assistant that can run commands works.**
 
 The skill format is read by assistants that support skills, and anything that
 reads `AGENTS.md` can use the short version at the repo root. The scripts and
@@ -168,8 +168,8 @@ template are plain shell, Python and Rust.
 
 **It looks the version up every time instead of trusting the docs.**
 
-The versions in this repo are what the template was tested with — ratatui 0.30.2
-on Rust 1.97 — not a promise about what is newest when you read this. The skill
+The versions in this repo are what the template was tested with, ratatui 0.30.2
+on its minimum supported Rust version, 1.88. They are not a promise about what is newest when you read this. The skill
 tells the assistant to:
 
 1. Run `crate-versions.sh` for each dependency.
@@ -199,7 +199,7 @@ judgment calls listed in
 <summary><b>Is the code AI-written?</b></summary>
 <br>
 
-**Yes, with AI assistance — and verified in CI.**
+**Yes, with AI assistance, and verified in CI.**
 
 Every template file is compiled and tested, and the process is written down so
 you can check the result yourself.
@@ -214,7 +214,7 @@ you can check the result yourself.
 
 ## Provenance
 
-The tells and principles come from public discussions of AI-generated projects and from lazygit's published design principles. `references/` marks where a rule is this project's own judgment. The template was built and tested with ratatui 0.30.2 on Rust 1.97. Versions in the docs are examples; the skill tells the assistant to look them up again.
+The tells and principles come from public discussions of AI-generated projects and from lazygit's published design principles. `references/` marks where a rule is this project's own judgment. The template was built and tested with ratatui 0.30.2 at Rust 1.88. Versions in the docs are examples; the skill tells the assistant to look them up again.
 
 ## Contributing
 

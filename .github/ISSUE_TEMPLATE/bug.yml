@@ -29,6 +29,6 @@ body:
       description: Commands, Rust version, terminal, and OS
       placeholder: |
         cargo test
-        rustc 1.100.0
+        rustc 1.88.0
     validations:
       required: true

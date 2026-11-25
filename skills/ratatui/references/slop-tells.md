@@ -1,6 +1,6 @@
 # Slop tells
 
-"Slop" here means output that reads as generated: recognizable on sight, with a gap between what it claims and what it does. Using an AI is not the problem; shipping filler is. `scripts/lint-slop.sh` checks the mechanical ones; the rest need judgment.
+"Slop" here means output that reads as generated: recognizable on sight, with a gap between what it claims and what it does. Using an AI is not the problem; shipping filler is. `skills/ratatui/scripts/lint-slop.sh` checks the mechanical ones; the rest need judgment.
 
 Sources for these tells are public discussions of AI-generated projects (a large study of complaints about AI-built sites, Rust forum and project AI policies, a NixOS forum review of a Rust TUI, Hacker News threads). The common thread across them: effort used to be proof of quality, now it is free, so people look for evidence that someone decided things.
 

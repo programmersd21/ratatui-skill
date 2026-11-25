@@ -27,6 +27,6 @@ python3 skills/ratatui/scripts/pty-smoke.py target/debug/<binary>
 skills/ratatui/scripts/lint-slop.sh .
 ```
 
-Also read the rendered screens as text at several sizes (`templates/dirview/examples/dump.rs`). Report what was built, the versions used, what passed, and anything you could not check.
+Also read the rendered screens as text at several sizes (`skills/ratatui/templates/dirview/examples/dump.rs`). Report what was built, the versions used, what passed, and anything you could not check.
 
 More detail: `skills/ratatui/references/` (`research-checklist.md`, `ux-principles.md`, `slop-tells.md`).
