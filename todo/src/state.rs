@@ -32,6 +32,7 @@ pub struct State {
     mode: Mode,
     input: String,
     status: Option<String>,
+    status_is_error: bool,
     page_size: usize,
     quit: bool,
 }
@@ -46,6 +47,7 @@ impl State {
             mode: Mode::Normal,
             input: String::new(),
             status: None,
+            status_is_error: false,
             page_size: 10,
             quit: false,
         })
@@ -59,6 +61,9 @@ impl State {
     }
     pub fn status(&self) -> Option<&str> {
         self.status.as_deref()
+    }
+    pub fn status_is_error(&self) -> bool {
+        self.status_is_error
     }
     pub fn page_size(&self) -> usize {
         self.page_size
@@ -91,6 +96,7 @@ impl State {
             return;
         }
         self.status = None;
+        self.status_is_error = false;
         let half_page = (self.page_size / 2).max(1);
         match action {
             Action::MoveDown => self.select(self.selected.saturating_add(1)),
@@ -165,8 +171,14 @@ impl State {
 
     fn persist(&mut self, ok_status: &str) {
         match store::save(&self.path, &self.tasks) {
-            Ok(()) => self.status = Some(ok_status.to_owned()),
-            Err(e) => self.status = Some(format!("cannot save: {e}")),
+            Ok(()) => {
+                self.status = Some(ok_status.to_owned());
+                self.status_is_error = false;
+            }
+            Err(e) => {
+                self.status = Some(format!("cannot save: {e}"));
+                self.status_is_error = true;
+            }
         }
     }
 }
@@ -232,6 +244,10 @@ mod tests {
         assert_eq!(s.len(), 4);
         assert_eq!(s.selected_task().map(|t| t.text.as_str()), Some("new task"));
         assert_eq!(s.status(), Some("task added"));
+        assert!(
+            !s.status_is_error(),
+            "success must not be styled as an error"
+        );
         let reloaded = fx.state()?;
         assert_eq!(reloaded.len(), 4);
         assert_eq!(

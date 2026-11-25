@@ -198,7 +198,9 @@ pub fn resolve(mode: Mode, event: KeyEvent) -> Option<Action> {
     if !matches!(event.kind, KeyEventKind::Press | KeyEventKind::Repeat) {
         return None;
     }
-    if event.code == KeyCode::Char('c') && event.modifiers.contains(KeyModifiers::CONTROL) {
+    if matches!(event.code, KeyCode::Char('c' | 'C'))
+        && event.modifiers.contains(KeyModifiers::CONTROL)
+    {
         return Some(Action::Quit);
     }
     // Shift is already encoded in the character ('G' not 'g'), so drop it.
@@ -281,6 +283,18 @@ mod tests {
     fn shifted_letters_match() {
         let got = resolve(Mode::Normal, press(KeyCode::Char('G'), KeyModifiers::SHIFT));
         assert_eq!(got, Some(Action::MoveBottom));
+    }
+
+    #[test]
+    fn ctrl_shift_c_quits_instead_of_typing_a_capital() {
+        let got = resolve(
+            Mode::Add,
+            press(
+                KeyCode::Char('C'),
+                KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+            ),
+        );
+        assert_eq!(got, Some(Action::Quit));
     }
 
     #[test]

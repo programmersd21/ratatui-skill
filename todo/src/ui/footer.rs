@@ -9,6 +9,8 @@ use crate::keymap;
 use crate::state::{Mode, State};
 use crate::theme::Theme;
 
+use super::text::status_style;
+
 pub fn render(frame: &mut Frame, area: Rect, state: &State, theme: &Theme) {
     let status = state.status().map(|s| sanitize(s).into_owned());
     let status_width = status
@@ -22,7 +24,10 @@ pub fn render(frame: &mut Frame, area: Rect, state: &State, theme: &Theme) {
 
     if let Some(status) = status {
         frame.render_widget(
-            Line::styled(truncate_end(&status, status_width), theme.error),
+            Line::styled(
+                truncate_end(&status, status_width),
+                status_style(state.status_is_error(), theme),
+            ),
             right,
         );
     }

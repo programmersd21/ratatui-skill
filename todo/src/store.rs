@@ -65,24 +65,28 @@ pub fn save(path: &Path, tasks: &[Task]) -> io::Result<()> {
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| "todo-tui.txt".to_owned());
-    let tmp = parent.join(format!(".{name}.tmp"));
-    {
+    let tmp = parent.join(format!(".{name}.{}.tmp", std::process::id()));
+    let written = (|| -> io::Result<()> {
         let mut file = std::fs::File::create(&tmp)?;
         file.write_all(out.as_bytes())?;
         file.flush()?;
-        file.sync_all()?;
-    }
-    match std::fs::rename(&tmp, path) {
-        Ok(()) => Ok(()),
-        Err(rename_error) => match std::fs::remove_file(&tmp) {
-            Ok(()) => Err(rename_error),
-            Err(cleanup_error) => Err(io::Error::other(format!(
-                "cannot replace {}: {rename_error}; also cannot remove temporary file {}: {cleanup_error}",
+        file.sync_all()
+    })();
+    let renamed = written.and_then(|()| std::fs::rename(&tmp, path));
+    if let Err(error) = &renamed {
+        if let Err(cleanup_error) = std::fs::remove_file(&tmp) {
+            return Err(io::Error::other(format!(
+                "cannot save {}: {error}; also cannot remove temporary file {}: {cleanup_error}",
                 path.display(),
                 tmp.display()
-            ))),
-        },
+            )));
+        }
+        return Err(io::Error::other(format!(
+            "cannot save {}: {error}",
+            path.display()
+        )));
     }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -130,5 +134,26 @@ mod tests {
         assert!(!task.done);
         assert!(parse_line("garbage").is_none());
         assert!(parse_line("- ").is_none());
+    }
+
+    #[test]
+    fn save_fails_clearly_when_the_parent_is_missing_and_leaves_no_temp() {
+        let root = std::env::temp_dir().join(format!("todo-store-missing-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).ok();
+        let target = root.join("nested/missing/tasks.txt");
+        let tasks = vec![Task {
+            text: "x".into(),
+            done: false,
+        }];
+        assert!(save(&target, &tasks).is_err());
+        let leftovers: Vec<_> = std::fs::read_dir(&root)
+            .map(|rd| rd.flatten().map(|e| e.path()).collect())
+            .unwrap_or_default();
+        assert!(
+            leftovers.is_empty(),
+            "no temp files may remain: {leftovers:?}"
+        );
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

@@ -5,7 +5,15 @@
 
 use std::borrow::Cow;
 
+use ratatui::style::Style;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+
+use crate::theme::Theme;
+
+/// Status messages use the muted role; only failures use the error role.
+pub fn status_style(is_error: bool, theme: &Theme) -> Style {
+    if is_error { theme.error } else { theme.muted }
+}
 
 /// Replace control characters so untrusted text (task text from a hand-edited
 /// file) cannot move the cursor, change colors or break the layout.

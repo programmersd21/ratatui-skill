@@ -172,11 +172,11 @@ impl State {
             }
             Action::FilterInput(c) => {
                 self.filter.push(c);
-                self.rebuild(None);
+                self.rebuild(self.selected_name());
             }
             Action::FilterBackspace => {
                 self.filter.pop();
-                self.rebuild(None);
+                self.rebuild(self.selected_name());
             }
             Action::ToggleHidden => {
                 self.show_hidden = !self.show_hidden;
@@ -251,7 +251,8 @@ impl State {
     }
 
     /// Re-sort, re-filter and keep the selection on `keep` when it is still
-    /// visible; otherwise clamp it into range.
+    /// visible. Otherwise select the visible entry nearest the old position,
+    /// so a filter or sort change does not highlight an unrelated file.
     fn rebuild(&mut self, keep: Option<String>) {
         let sort = self.sort;
         self.entries.sort_by_cached_key(|e| sort_key(e, sort));

@@ -182,3 +182,24 @@ fn catppuccin_theme_paints_palette_colors() -> Result {
     assert!(has(green), "done green missing");
     Ok(())
 }
+
+#[test]
+fn success_status_is_not_styled_as_an_error() -> Result {
+    let fx = Fixture::new("status")?;
+    let mut state = State::open(fx.0.clone())?;
+    state.update(Action::StartAdd);
+    for c in "note".chars() {
+        state.update(Action::AddInput(c));
+    }
+    state.update(Action::CommitAdd);
+    assert!(!state.status_is_error(), "success is not an error");
+
+    let mut terminal = Terminal::new(TestBackend::new(80, 24))?;
+    let theme = Theme::ansi();
+    let mut view = ViewState::default();
+    terminal.draw(|f| ui::render(f, &state, &mut view, &theme))?;
+    let buffer = terminal.backend().buffer();
+    let has_red = buffer.content().iter().any(|cell| cell.fg == Color::Red);
+    assert!(!has_red, "success status must not use the error color");
+    Ok(())
+}

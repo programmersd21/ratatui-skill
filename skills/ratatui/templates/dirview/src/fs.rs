@@ -76,19 +76,22 @@ fn file_preview(path: &Path) -> Preview {
         Err(e) => return Preview::Error(e.to_string()),
     };
     let mut buf = Vec::new();
-    if let Err(e) = file.take(PREVIEW_BYTES).read_to_end(&mut buf) {
+    // Read one extra byte so an exactly-sized file is not marked truncated.
+    if let Err(e) = file.take(PREVIEW_BYTES + 1).read_to_end(&mut buf) {
         return Preview::Error(e.to_string());
     }
     if buf.contains(&0) {
         return Preview::Binary;
     }
+    let truncated = buf.len() as u64 > PREVIEW_BYTES;
+    buf.truncate(PREVIEW_BYTES as usize);
     let text = String::from_utf8_lossy(&buf);
     let mut lines: Vec<String> = text
         .lines()
         .take(PREVIEW_LINES + 1)
         .map(|l| sanitize(l).into_owned())
         .collect();
-    let truncated = lines.len() > PREVIEW_LINES || buf.len() as u64 == PREVIEW_BYTES;
+    let truncated = truncated || lines.len() > PREVIEW_LINES;
     lines.truncate(PREVIEW_LINES);
     Preview::Text { lines, truncated }
 }
