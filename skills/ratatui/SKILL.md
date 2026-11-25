@@ -24,11 +24,13 @@ scripts/crate-versions.sh ratatui color-eyre unicode-width   # plus every other 
 All paths below are relative to this skill's installed directory.
 
 Resolving the installed directory: this skill is invoked from an agent that may
-be working in a project directory unrelated to the skill. Compute the skill
-directory from the skill file location rather than from the current working
-directory, e.g. `SKILL_DIR=$(dirname "$(realpath SKILL.md)")` or, in Python,
-`pathlib.Path(__file__).resolve().parent`. Run every bundled script through
-that path, e.g. `$SKILL_DIR/scripts/crate-versions.sh`.
+be working in a project directory unrelated to the skill. The agent must locate
+this SKILL.md file first (it is the file being read), then derive the skill
+directory from its own absolute path: `SKILL_DIR=$(dirname "$(realpath <path-to-this-SKILL.md>)")`.
+All bundled scripts live under `$SKILL_DIR/scripts/` and all templates under
+`$SKILL_DIR/templates/`. Run every command through that absolute path, e.g.
+`$SKILL_DIR/scripts/crate-versions.sh`. Never assume the current working
+directory is the skill or repository root.
 ```
 
 - That prints the newest stable version and the minimum Rust version of each crate. Use those, and set `rust-version` in `Cargo.toml` to the highest one you depend on.
@@ -102,7 +104,7 @@ cargo test
 Then look at it:
 
 1. **Dump screens.** Render the real screens through `ratatui::backend::TestBackend` and read the text at several sizes (see `templates/dirview/examples/dump.rs`): at least 40x8, 80x24 and 200x60, plus the empty, error and help states. Fix anything misaligned, clipped or confusing.
-2. **Run it in a real terminal.** `scripts/pty-smoke.py PATH/TO/BINARY` runs the binary in a pseudo-terminal, sends keys, and checks that it enters and restores the alternate screen, quits on `q` and Ctrl-C, survives a tiny terminal, and drops color under `NO_COLOR`. A TUI cannot be run through a plain pipe; use the PTY.
+2. **Run it in a real terminal.** `scripts/pty-smoke.py PATH/TO/BINARY` runs the binary in a pseudo-terminal and checks that it enters and restores the alternate screen, survives a tiny terminal, and exits cleanly. By default it sends Ctrl-C to quit. Opt in to app-specific checks with `--quit-keys`, `--keys`, `--tiny-text`, `--check-ctrl-c` and `--check-color`. A TUI cannot be run through a plain pipe; use the PTY.
 3. **Scan for slop.** `scripts/lint-slop.sh PROJECT_DIR` must print `clean`.
 
 If a check cannot run in this environment, say which one and why. Do not report success for a check you did not run.
