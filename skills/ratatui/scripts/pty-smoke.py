@@ -127,7 +127,7 @@ class Session:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--quit-keys", default="", help="keys that must quit the app (default: none)")
+    parser.add_argument("--quit-keys", default="\x03", help="keys that must quit the app (default: Ctrl-C)")
     parser.add_argument("--keys", default="", help="app-specific interaction sequence to send before quitting")
     parser.add_argument("--tiny-text", default="", help="optional expected text in a tiny terminal")
     parser.add_argument("--width", type=int, default=80, help="normal terminal width")
