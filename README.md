@@ -38,7 +38,7 @@
 
 AI assistants write ratatui from memory. They reach for old APIs and wrong crate versions, then ship a UI that looks generated: neon defaults, decorative panels, keys that do nothing.
 
-**ratatui-skill** replaces that with a fixed process and a tested template. The assistant looks up what is current, writes a design brief before any code, builds from a working codebase, and proves the result before it says "done".
+**ratatui-skill** replaces that with a fixed process and a tested template. The assistant looks up what is current, writes a design brief before any code (new apps only), builds from a working codebase, and proves the result before it says "done".
 
 ## Quick start
 
@@ -125,7 +125,7 @@ skills/ratatui/
     ux-principles.md           layouts, keys, color, responsiveness
     slop-tells.md              what reads as generated, with before and after
   scripts/
-    crate-versions.sh          newest stable version and MSRV from the crates.io index
+    crate-versions.sh          newest stable version and MSRV via cargo info
     lint-slop.sh               mechanical slop scanner; exit status gates CI
     pty-smoke.py               run a TUI in a pseudo-terminal and check it behaves
   templates/dirview/           a complete ratatui 0.30 directory browser

@@ -186,7 +186,9 @@ def main():
             pass
         sess.drain(0.3)
         code = sess.finish()
+        # After resize and quit, the alternate screen must be restored.
         check("survives terminal resize", code == 0, f"exit={code}")
+        check("restores terminal after resize", ALT_SCREEN_LEAVE in sess.out, f"output={sess.out[-200:]!r}")
         sess.__exit__(None, None, None)
 
     if quit_keys:
