@@ -99,9 +99,12 @@ cargo test
 
 Then:
 
-1. **Dump screens.** Render through `TestBackend` at 40x8, 80x24, 200x60 plus
-   empty, error, help states. Read the text. Fix misalignment or clipping.
-2. **PTY smoke.** `$SKILL_DIR/scripts/pty-smoke.py PATH/TO/BINARY`. Universal
+1. **Render checks where they add value.** Use `TestBackend` at 40x8, 80x24,
+   and 200x60 for clipping, alignment and responsive layout. Prefer state-based
+   assertions for behavior; do not snapshot every screen by default.
+2. **Terminal integration.** Use VHS/Betamax recordings or a PTY smoke test
+   for lifecycle, resize and key handling. Startup/exit alone does not prove
+   screen content. `$SKILL_DIR/scripts/pty-smoke.py PATH/TO/BINARY`. Universal
    checks run by default (startup, alternate screen, tiny terminal, clean exit
    via Ctrl-C). Add `--quit-keys`, `--keys`, `--tiny-text`, `--check-ctrl-c`,
    `--check-color`, `--check-resize` for app-specific checks.
