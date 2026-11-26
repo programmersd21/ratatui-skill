@@ -32,7 +32,9 @@ pub fn render(frame: &mut Frame, area: Rect, theme: &Theme, offset: usize) {
         block = block.title_bottom(Line::styled(close, theme.muted));
     }
     frame.render_widget(Clear, popup);
-    let max_offset = lines.len().saturating_sub(popup.height.saturating_sub(2) as usize);
+    let max_offset = lines
+        .len()
+        .saturating_sub(popup.height.saturating_sub(2) as usize);
     let offset = offset.min(max_offset);
     frame.render_widget(
         Paragraph::new(lines)
