@@ -19,6 +19,7 @@
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
+  <a href="docs/agent-compatibility.md">Agent support</a> ·
   <a href="#what-changes">What changes</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#demo">Demo</a> ·
@@ -38,16 +39,23 @@
 
 AI assistants write ratatui from memory. They reach for old APIs and wrong crate versions, then ship a UI that looks generated: neon defaults, decorative panels, keys that do nothing.
 
-**ratatui-skill** replaces that with a fixed process and a tested template. The assistant looks up what is current, writes a design brief before any code (new apps only), builds from a working codebase, and proves the result before it says "done".
+**ratatui-skill** provides a practical workflow, version-aware research, a working reference template, and verification guidance. The assistant inspects the project, adapts the process to the task, and reports what it actually checked.
 
 ## Quick start
 
-1. Copy the skill into your assistant's skills directory. For Claude Code:
+1. Copy the canonical skill directory into a discovery location supported by your agent. From the directory containing this repository:
 
    ```bash
-   mkdir -p ~/.claude/skills && cp -r skills/ratatui ~/.claude/skills/   # all projects
-   mkdir -p .claude/skills && cp -r skills/ratatui .claude/skills/         # one project
+   # Codex, Cursor, Antigravity, and OpenCode
+   mkdir -p /path/to/project/.agents/skills
+   cp -a skills/ratatui /path/to/project/.agents/skills/ratatui
+
+   # Claude Code
+   mkdir -p /path/to/project/.claude/skills
+   cp -a skills/ratatui /path/to/project/.claude/skills/ratatui
    ```
+
+   See [agent compatibility and installation](docs/agent-compatibility.md) for global installs and native alternatives.
 
 2. Ask for a terminal UI:
 
@@ -58,7 +66,7 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
 
 3. Watch it inspect the project, choose a proportionate workflow, build, and run relevant checks.
 
-Assistants that read `AGENTS.md` instead of loading skills can use the one at the repo root. It carries the same process in short form and points at the skill files.
+`AGENTS.md` is a concise fallback for agents that read repository instructions but do not discover skills. It does not install or auto-register the skill. See [agent compatibility](docs/agent-compatibility.md) for the supported discovery paths.
 
 ## What changes
 
