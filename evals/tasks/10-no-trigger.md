@@ -1,0 +1,14 @@
+# Eval 10: Task that should NOT trigger the Ratatui skill
+
+## Task
+
+Write a Python script that reads a CSV file and prints summary statistics
+(mean, median, std) for each numeric column.
+
+## Acceptance criteria
+
+- Skill is NOT activated (no ratatui references in output)
+- Python code compiles and runs
+- Handles missing values gracefully
+
+## Should trigger skill: no

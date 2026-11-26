@@ -1,0 +1,17 @@
+# Eval 07: Loading, empty, and error states
+
+## Task
+
+Build a TUI that reads a file path from argv and displays its contents. Handle:
+file not found, permission denied, empty file, binary file, very large file.
+
+## Acceptance criteria
+
+- Each state has a distinct, informative message
+- Error message includes the OS error reason
+- Empty file shows "empty file" not a blank screen
+- Binary file shows "binary file" not garbage
+- Large file shows first N lines with truncation indicator
+- No panic on any input
+
+## Should trigger skill: yes

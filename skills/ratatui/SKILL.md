@@ -1,99 +1,90 @@
 ---
 name: ratatui
-description: Build or improve terminal UIs in Rust with ratatui. Use for any TUI, terminal dashboard, file browser, log viewer, or "make this CLI interactive" task in Rust. Forces fresh research of crate versions and APIs, a written design brief, a working modular codebase, and verification (build, clippy, tests, screen dumps, a real PTY run, slop scan) before anything is called done.
+description: Build or modify terminal UIs in Rust with ratatui. Use for any TUI, terminal dashboard, file browser, log viewer, or "make this CLI interactive" task. Do not use for non-Rust or non-terminal tasks.
 ---
 
 # ratatui
 
 Write terminal UIs that work, look deliberate, and contain no filler.
 
-The two failures this skill exists to prevent:
+Two failures this skill prevents:
 
-1. **Stale or invented APIs.** ratatui changes between releases and models remember old versions. Never write ratatui code from memory.
-2. **Slop.** A UI that looks generated: default styling nobody chose, decorative panels, fake data, buttons that do nothing, comments that narrate the code. Slop is the gap between what the program claims and what it does.
+1. **Stale or invented APIs.** ratatui changes between releases. Never write ratatui code from memory.
+2. **Slop.** Default styling nobody chose, decorative panels, fake data, dead keys, narrating comments. If it is on screen it is real.
 
-Work through the five steps in order. Do not skip a step because the task looks small.
+All paths below are relative to this skill's installed directory. Locate this
+SKILL.md first, then derive the skill directory:
+`SKILL_DIR=$(dirname "$(realpath <path-to-this-SKILL.md>)")`. Run every bundled
+script through that absolute path. Never assume the working directory is the
+skill or repository root.
+
+## Which workflow
+
+**New application** (no existing codebase): follow steps 1-5 in full.
+
+**Existing application** (bug fix, small feature, layout tweak): skip the design
+brief unless the change alters the layout archetype. Inspect the existing code
+first. Make the smallest change that fixes the issue. Preserve existing
+dependencies, patterns, and key bindings. Run the existing tests, not new ones
+unless the bug lacks coverage. Do not restructure.
 
 ## 1. Research (before any code)
 
-Run these. Quote what they return when you pick versions; do not paraphrase from memory.
+Run `$SKILL_DIR/scripts/crate-versions.sh ratatui color-eyre unicode-width` plus
+every other crate you plan to use. Quote what it returns. Set `rust-version` in
+Cargo.toml to the highest MSRV among your dependencies.
 
-```bash
-scripts/crate-versions.sh ratatui color-eyre unicode-width   # plus every other crate you plan to use
+- Check `cargo --version` against each dependency's MSRV. Fix before continuing.
+- Read the ratatui CHANGELOG and BREAKING-CHANGES for your version.
+- Confirm widget crates support your ratatui version (`cargo tree -d`).
+- Import crossterm through `ratatui::crossterm`. Do not add `crossterm` to
+  Cargo.toml unless you can state why.
+- Uncertain API: write a ten-line program and compile it.
 
-All paths below are relative to this skill's installed directory.
+See `references/research-checklist.md` for pitfalls found in practice.
 
-Resolving the installed directory: this skill is invoked from an agent that may
-be working in a project directory unrelated to the skill. The agent must locate
-this SKILL.md file first (it is the file being read), then derive the skill
-directory from its own absolute path: `SKILL_DIR=$(dirname "$(realpath <path-to-this-SKILL.md>)")`.
-All bundled scripts live under `$SKILL_DIR/scripts/` and all templates under
-`$SKILL_DIR/templates/`. Run every command through that absolute path, e.g.
-`$SKILL_DIR/scripts/crate-versions.sh`. Never assume the current working
-directory is the skill or repository root.
-```
+## 2. Design brief (new apps only)
 
-- That prints the newest stable version and the minimum Rust version of each crate. Use those, and set `rust-version` in `Cargo.toml` to the highest one you depend on.
-- Check the installed toolchain with `cargo --version`. If it is older than a dependency's `rust-version`, say so and fix it before continuing.
-- Set `edition` to the newest the installed toolchain supports (`cargo init` picks it).
-- Read the release notes for the ratatui version you are using: its `CHANGELOG.md` and `BREAKING-CHANGES.md` on GitHub, and its docs.rs page. Search the web for them; do not assume their contents.
-- For every third-party widget crate (text input, tree, scroll view, image, effects), run the version script, then open its docs.rs page and confirm it supports the ratatui version you chose. A crate pinned to an older ratatui will pull in a second copy of ratatui and fail to compile with confusing type errors. Prefer fewer crates; most apps need only `ratatui`, `color-eyre` and `unicode-width`.
-- Add dependencies with `cargo add` and run `cargo tree -d` to confirm there are no duplicate `ratatui` or `crossterm` entries.
-- Import crossterm through `ratatui::crossterm`. Do not add `crossterm` to `Cargo.toml` unless you have a reason you can state.
+Write this before any code. Every line justified from the app's actual data.
 
-Anything you could not verify, say so. Never invent a method, feature flag or crate. If an API is uncertain, write the smallest program that calls it and compile it.
-
-See `references/research-checklist.md` for the API pitfalls found while building the template.
-
-## 2. Design brief (before any code)
-
-Write this in your reply. Every line must be justified from the app's actual data, not from taste.
-
-- **Purpose:** one sentence, and who uses it, with what keyboard habits.
-- **Data:** what is shown, how big it gets (10 rows or 100,000?), how it changes (static, polled, streamed).
-- **Layout archetype:** pick one and say why. Options: list + preview, multi-panel, drill-down (Miller columns), dashboard, header + list, popup/overlay. See `references/ux-principles.md`.
-- **Accent color:** exactly one, an ANSI color, and what it marks (selection? focus? directories?). Secondary text is dim, not a second color.
-- **Density:** compact (one row per item, no padding) or roomy. State the reason.
-- **Modes and keys:** the modes, and the keys for each. Prefer vim-style plus arrows. Never rebind Ctrl-C, Esc, or Enter to something surprising.
-- **States:** what the screen shows when empty, loading, failed, and too small.
-- **Not doing:** features you are leaving out on purpose.
-
-Choosing a look because it is the first one that comes to mind is the failure. If the brief reads like it could describe any app, rewrite it.
+- **Purpose:** one sentence, user, keyboard habits.
+- **Data:** what is shown, how big (10 rows or 100,000?), how it changes.
+- **Layout archetype:** pick one and say why (list+preview, multi-panel,
+  drill-down, dashboard, header+list, popup/overlay).
+- **Accent color:** exactly one ANSI color, what it marks. Secondary text is
+  dim, not a second color.
+- **Density:** compact or roomy, and why.
+- **Modes and keys:** vim-style plus arrows. Never rebind Ctrl-C, Esc, Enter.
+- **States:** empty, loading, failed, too small.
+- **Not doing:** features left out on purpose.
 
 ## 3. Build
 
-Start from `templates/dirview/`. It is a complete, tested ratatui 0.30 program (a directory browser) with the structure to copy:
+Start from `templates/dirview/`. Copy the structure, then replace the domain.
 
 | File | Job |
 |---|---|
 | `action.rs` | Enum of everything the user can do |
-| `keymap.rs` | The one table of keys. Input, footer hints and `?` help all read it |
-| `state.rs` | All state and `State::update(Action)`. No terminal types, fully unit-tested |
-| `fs.rs` (your data source) | I/O. No terminal types |
+| `keymap.rs` | One key table drives input, footer hints, and `?` help |
+| `state.rs` | All state and `State::update(Action)`. No terminal types |
+| `fs.rs` | I/O. No terminal types |
 | `ui/` | Rendering only. Reads state, never changes it |
 | `theme.rs` | Colors by role. The only file that names a color |
-| `event.rs`, `app.rs`, `main.rs` | Input, the loop, startup |
+| `event.rs`, `app.rs`, `main.rs` | Input, loop, startup |
 
-Copy the structure, then replace the domain. Do not ship the directory-browser domain code in an unrelated app.
+Rules:
 
-Rules, each with a reason:
+- Everything visible works. No fake data, dead keys, placeholder rows.
+- Measure text with `unicode-width`, never `.len()`. Sanitize untrusted text.
+- Build only rows on screen. Cost per frame must not grow with data.
+- 16 ANSI colors by default. Respect `NO_COLOR`. No forced background.
+- One border style, plain Unicode, no emoji.
+- Handle every state: empty, error, loading, too small, resize.
+- Destructive actions confirm. Slow work never blocks the draw loop.
+- `color-eyre` in `main`, typed errors in the library, no swallowed results.
+- Comments say why, not what. No TODOs, no commented-out code.
 
-- **Everything visible works.** No decorative panels, fake numbers, placeholder rows, or keys that do nothing. If it is on screen it is real.
-- **One keymap table.** A documented key always works and a working key is always documented, because both come from the same data (`keymap.rs` has the tests).
-- **State has no terminal types; `ui` has no side effects.** This is what makes the logic testable and the render predictable.
-- **Measure text with `unicode-width`, never `.len()`.** Truncate with an ellipsis. Sanitize untrusted text (file names, log lines) so control characters cannot move the cursor.
-- **Build only the rows on screen.** Cost per frame must not grow with the data.
-- **Colors by role, in `theme.rs`.** Default to the 16 ANSI colors so the user's own palette applies. Respect `NO_COLOR`. Do not force a background. Make bright 24-bit themes opt-in.
-- **One border style, plain Unicode, no emoji.** Borders group things; whitespace separates them.
-- **Footer hints show the keys that matter now**, and change with the mode. `?` opens the full list.
-- **Handle every state:** empty (say why and what to do), error (show the reason), loading (show progress, never freeze), too small (a message, not a panic), resize.
-- **Destructive actions confirm.**
-- **Slow work never blocks the draw loop.** Use a thread or task and send results back as actions.
-- **Errors:** `color-eyre` in `main`, typed errors in the library, no swallowed results.
-- **Comments say why, not what.** No chat artifacts, no TODOs, no commented-out code.
-- **README is concrete:** real commands, real keys, one honest line on AI use. No emoji headers, no benefit lists.
-
-## 4. Verify (the app is not done until all of this passes)
+## 4. Verify
 
 ```bash
 cargo fmt --check
@@ -101,20 +92,26 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-Then look at it:
+Then:
 
-1. **Dump screens.** Render the real screens through `ratatui::backend::TestBackend` and read the text at several sizes (see `templates/dirview/examples/dump.rs`): at least 40x8, 80x24 and 200x60, plus the empty, error and help states. Fix anything misaligned, clipped or confusing.
-2. **Run it in a real terminal.** `scripts/pty-smoke.py PATH/TO/BINARY` runs the binary in a pseudo-terminal and checks that it enters and restores the alternate screen, survives a tiny terminal, and exits cleanly. By default it sends Ctrl-C to quit. Opt in to app-specific checks with `--quit-keys`, `--keys`, `--tiny-text`, `--check-ctrl-c` and `--check-color`. A TUI cannot be run through a plain pipe; use the PTY.
-3. **Scan for slop.** `scripts/lint-slop.sh PROJECT_DIR` must print `clean`.
+1. **Dump screens.** Render through `TestBackend` at 40x8, 80x24, 200x60 plus
+   empty, error, help states. Read the text. Fix misalignment or clipping.
+2. **PTY smoke.** `$SKILL_DIR/scripts/pty-smoke.py PATH/TO/BINARY`. Universal
+   checks run by default (startup, alternate screen, tiny terminal, clean exit
+   via Ctrl-C). Add `--quit-keys`, `--keys`, `--tiny-text`, `--check-ctrl-c`,
+   `--check-color` for app-specific checks.
+3. **Slop scan.** `$SKILL_DIR/scripts/lint-slop.sh PROJECT_DIR` must print
+   `clean`.
 
-If a check cannot run in this environment, say which one and why. Do not report success for a check you did not run.
+If a check cannot run, say which and why. Do not report success for unrun checks.
 
 ## 5. Report
 
-Say what was built, the versions used (from step 1), which checks passed, and anything unverified. Keep it short. Do not recap the steps.
+Say what was built, versions used, which checks passed, and anything unverified.
+Keep it short. Do not recap the steps.
 
 ## References
 
-- `references/research-checklist.md`: how to research versions and APIs, and the pitfalls found in practice
-- `references/ux-principles.md`: layout archetypes, keys, color, responsiveness
-- `references/slop-tells.md`: what reads as generated, with before and after
+- `references/research-checklist.md`: version and API research, pitfalls
+- `references/ux-principles.md`: layouts, keys, color, responsiveness
+- `references/slop-tells.md`: what reads as generated, with before/after
