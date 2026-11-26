@@ -17,7 +17,7 @@ impl Fixture {
     fn new(name: &str) -> std::result::Result<Self, Box<dyn std::error::Error>> {
         let root =
             std::env::temp_dir().join(format!("dirview-render-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
+        let _cleanup = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("docs"))?;
         std::fs::write(root.join("docs/guide.md"), "# Guide\n")?;
         std::fs::write(root.join("notes.txt"), "first line\nsecond line\n")?;
@@ -29,7 +29,7 @@ impl Fixture {
 
 impl Drop for Fixture {
     fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
+        let _cleanup = std::fs::remove_dir_all(&self.0);
     }
 }
 
