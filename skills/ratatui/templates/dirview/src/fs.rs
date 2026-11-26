@@ -72,7 +72,7 @@ fn dir_preview(path: &Path) -> Preview {
         let is_dir = entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false);
         names.push((is_dir, name));
     }
-    names.sort_by(|a, b| (b.0, a.1.to_lowercase()).cmp(&(a.0, b.1.to_lowercase())));
+    names.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase())));
     let total = names.len() + usize::from(truncated);
     let names = names
         .into_iter()
