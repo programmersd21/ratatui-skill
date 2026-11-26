@@ -40,15 +40,33 @@ for name, pattern, include in rules:
             lines = path.read_text(encoding="utf-8").splitlines()
         except UnicodeDecodeError:
             continue
-        for number, line in enumerate(lines, 1):
-            if number > 1 and line.startswith("#[cfg(test)]"):
-                break
+        number = 0
+        while number < len(lines):
+            line = lines[number]
+            if line.strip() == "#[cfg(test)]":
+                item = number + 1
+                while item < len(lines) and not lines[item].strip():
+                    item += 1
+                if item < len(lines) and lines[item].lstrip().startswith("mod ") and "{" in lines[item]:
+                    depth = 0
+                    while item < len(lines):
+                        depth += lines[item].count("{") - lines[item].count("}")
+                        item += 1
+                        if depth <= 0:
+                            break
+                    number = item
+                    continue
+                number = min(item + 1, len(lines))
+                continue
             if pattern.search(line):
                 if name == "no debug leftovers" and "allow print" in line:
+                    number += 1
                     continue
                 if name == "no debug leftovers" and 'println!("{USAGE}")' in line:
+                    number += 1
                     continue
-                hits.append(f"{path.relative_to(root)}:{number}: {line.strip()}")
+                hits.append(f"{path.relative_to(root)}:{number + 1}: {line.strip()}")
+            number += 1
     if hits:
         failed += 1
         print(f"FAIL  {name} ({len(hits)})")
