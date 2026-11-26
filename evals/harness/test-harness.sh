@@ -114,6 +114,32 @@ path.write_text(json.dumps(data, indent=2) + "\n")
 PY
 python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary" >/dev/null
 
+mkdir -p "$TMP/summary-invalid/python-skill0-trial1"
+cat > "$TMP/summary-invalid/python-skill0-trial1/result.json" <<'RESULT'
+{
+  "exit_status": 0,
+  "timed_out": false,
+  "task_language": "python",
+  "acceptance_pass": "maybe"
+}
+RESULT
+if python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary-invalid" >/dev/null; then
+  echo "summary accepted an invalid acceptance status" >&2
+  exit 1
+else
+  status=$?
+  [ "$status" -eq 1 ] || exit "$status"
+fi
+
+mkdir -p "$TMP/summary-missing/python-skill0-trial1"
+if python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary-missing" 2 >/dev/null; then
+  echo "summary ignored a missing trial result" >&2
+  exit 1
+else
+  status=$?
+  [ "$status" -eq 1 ] || exit "$status"
+fi
+
 mkdir -p "$TMP/non-empty-results"
 touch "$TMP/non-empty-results/old-run"
 if bash "$ROOT/evals/harness/run-suite.sh" 1 10 "$TMP/non-empty-results" >/dev/null 2>&1; then

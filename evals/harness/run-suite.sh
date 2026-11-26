@@ -17,17 +17,30 @@ fi
 
 echo "Running $TRIALS trial(s) per task per condition, timeout=${TIMEOUT}s"
 
+EXPECTED_TRIALS=0
+RUNNER_FAILURES=0
+
 for task in "$REPO_ROOT"/evals/tasks/*.md; do
   name="$(basename "$task" .md)"
   for skill in 0 1; do
     for trial in $(seq 1 "$TRIALS"); do
       dir="$RESULTS/$name-skill$skill-trial$trial"
       echo "=== $name skill=$skill trial=$trial ==="
+      mkdir "$dir"
+      EXPECTED_TRIALS=$((EXPECTED_TRIALS + 1))
       if ! bash "$REPO_ROOT/evals/harness/run-trial.sh" "$task" "$skill" "$dir" "$TIMEOUT"; then
+        RUNNER_FAILURES=$((RUNNER_FAILURES + 1))
         echo "Trial did not pass automated execution checks: $dir" >&2
       fi
     done
   done
 done
 
-python3 "$REPO_ROOT/evals/harness/summarize-results.py" "$RESULTS"
+SUMMARY_STATUS=0
+python3 "$REPO_ROOT/evals/harness/summarize-results.py" "$RESULTS" "$EXPECTED_TRIALS" || SUMMARY_STATUS=$?
+
+if [[ "$RUNNER_FAILURES" -gt 0 ]]; then
+  printf 'SUITE FAILED: %s trial runner invocation(s) failed\n' "$RUNNER_FAILURES" >&2
+  exit 1
+fi
+exit "$SUMMARY_STATUS"

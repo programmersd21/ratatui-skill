@@ -60,18 +60,35 @@ def review_status(trial_dir):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print("usage: summarize-results.py RESULTS_DIR", file=sys.stderr)
+    if len(sys.argv) not in {2, 3}:
+        print("usage: summarize-results.py RESULTS_DIR [EXPECTED_TRIALS]", file=sys.stderr)
         return 2
+
+    expected_trials = None
+    if len(sys.argv) == 3:
+        try:
+            expected_trials = int(sys.argv[2])
+        except ValueError:
+            print("EXPECTED_TRIALS must be a non-negative integer", file=sys.stderr)
+            return 2
+        if expected_trials < 0:
+            print("EXPECTED_TRIALS must be a non-negative integer", file=sys.stderr)
+            return 2
 
     root = pathlib.Path(sys.argv[1]).resolve()
     if not root.is_dir():
         print(f"results directory not found: {root}", file=sys.stderr)
         return 2
 
-    result_paths = sorted(root.rglob("result.json"))
-    if not result_paths:
-        print("no trial result.json files found", file=sys.stderr)
+    trial_dirs = sorted(path for path in root.iterdir() if path.is_dir())
+    if expected_trials is not None and len(trial_dirs) != expected_trials:
+        print(
+            f"expected {expected_trials} trial directories, found {len(trial_dirs)}",
+            file=sys.stderr,
+        )
+        return 1
+    if not trial_dirs:
+        print("no trial directories found", file=sys.stderr)
         return 2
 
     completed = 0
@@ -83,8 +100,13 @@ def main():
     human_pending = 0
     human_invalid = 0
 
-    for result_path in result_paths:
-        trial_dir = result_path.parent
+    for trial_dir in trial_dirs:
+        result_path = trial_dir / "result.json"
+        if not result_path.is_file():
+            failed += 1
+            print(f"FAIL  {trial_dir.name}: result.json missing")
+            continue
+
         result = read_json(result_path)
         if not isinstance(result, dict):
             failed += 1
@@ -92,9 +114,17 @@ def main():
             continue
 
         trial_failed = False
+        acceptance = result.get("acceptance_pass")
+        if not isinstance(acceptance, str) or acceptance not in {"true", "false", "unverified"}:
+            trial_failed = True
+            acceptance = "invalid"
+            print(f"FAIL  {trial_dir.name}: invalid acceptance_pass value")
+        if type(result.get("exit_status")) is not int or type(result.get("timed_out")) is not bool:
+            trial_failed = True
+            print(f"FAIL  {trial_dir.name}: invalid execution status fields")
         if result.get("exit_status") != 0 or result.get("timed_out") is True:
             trial_failed = True
-        if result.get("acceptance_pass") == "false":
+        if acceptance == "false":
             trial_failed = True
         if result.get("task_language") == "rust":
             if not all(result.get(key) is True for key in ("compile_ok", "clippy_ok", "test_ok")):
@@ -102,9 +132,9 @@ def main():
 
         if result.get("exit_status") == 0 and result.get("timed_out") is False:
             completed += 1
-        if result.get("acceptance_pass") == "true":
+        if acceptance == "true":
             auto_accepted += 1
-        elif result.get("acceptance_pass") == "unverified":
+        elif acceptance == "unverified":
             acceptance_unverified += 1
 
         review = review_status(trial_dir)
@@ -121,12 +151,12 @@ def main():
         if trial_failed:
             failed += 1
             print(f"FAIL  {trial_dir.name}")
-        elif review == "passed" and result.get("acceptance_pass") in {"true", "unverified"}:
+        elif review == "passed" and acceptance in {"true", "unverified"}:
             print(f"PASS  {trial_dir.name}")
         else:
             print(f"WAIT  {trial_dir.name}: acceptance or human review is incomplete")
 
-    total = len(result_paths)
+    total = len(trial_dirs)
     print()
     print("=== Evaluation summary ===")
     print(f"Trials: {total}")
