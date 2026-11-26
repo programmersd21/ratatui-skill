@@ -29,7 +29,7 @@ EVAL_MODEL="your-model-id" EVAL_PROVIDER="your-provider" EVAL_MODEL_SETTINGS="te
   bash evals/harness/run-suite.sh 1 600
 ```
 
-These are operator-supplied labels; the harness does not infer or verify provider-side settings. They are recorded in each trial's `result.json`, along with the repository commit and task-spec SHA-256.
+These are operator-supplied, non-secret labels; do not put API keys or credentials in them. The harness does not infer or verify provider-side settings. They are recorded in each trial's `result.json`, along with the repository commit, task-spec SHA-256, skill content hash, and expected trigger metadata.
 
 Run one paired task manually:
 

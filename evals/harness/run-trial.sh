@@ -53,7 +53,23 @@ if [ "$WITH_SKILL" = "1" ]; then
   rm -rf "$SKILL_DST"
   cp -r "$SKILL_SRC" "$SKILL_DST"
   # Hash actual skill contents (not git HEAD).
-  SKILL_HASH=$(python3 -c "import hashlib, pathlib, sys; h=hashlib.sha256(); [h.update(p.read_bytes()) for p in sorted(pathlib.Path(sys.argv[1]).rglob('*')) if p.is_file()]; print(h.hexdigest())" "$SKILL_SRC")
+  SKILL_HASH=$(python3 - "$SKILL_SRC" <<'PYHASH'
+import hashlib
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+digest = hashlib.sha256()
+for path in sorted(item for item in root.rglob("*") if item.is_file()):
+    relative = path.relative_to(root).as_posix().encode("utf-8")
+    content = path.read_bytes()
+    digest.update(len(relative).to_bytes(8, "big"))
+    digest.update(relative)
+    digest.update(len(content).to_bytes(8, "big"))
+    digest.update(content)
+print(digest.hexdigest())
+PYHASH
+)
   SKILL_INJECTED=true
   if [ ! -f "$SKILL_DST/SKILL.md" ]; then
     echo "skill injection failed: SKILL.md not found" >&2
@@ -72,6 +88,7 @@ printf '%s\n' "$PROMPT" > "$TRIAL_DIR/prompt.txt"
 TASK_LANG=$(grep -m1 '^language:' "$TASK_FILE" 2>/dev/null | sed 's/^language: *//' | tr -d ' ' || true)
 [ -n "$TASK_LANG" ] || TASK_LANG="rust"
 
+TASK_TRIGGER=$(sed -nE 's/^[#[:space:]]*Should trigger skill:[[:space:]]*(yes|no).*$/\1/ip' "$TASK_FILE" | head -1 | tr '[:upper:]' '[:lower:]')
 TASK_FIXTURE=$(grep -m1 '^fixture:' "$TASK_FILE" 2>/dev/null | sed 's/^fixture: *//' | tr -d ' ' || true)
 
 case "$TASK_FIXTURE" in
@@ -137,7 +154,7 @@ if [ "$TASK_LANG" = "rust" ]; then
   if cargo build --manifest-path "$PROJECT/Cargo.toml" >/dev/null 2>&1; then
     COMPILE_OK=true
   fi
-  if cargo clippy --manifest-path "$PROJECT/Cargo.toml" -- -D warnings >/dev/null 2>&1; then
+  if cargo clippy --manifest-path "$PROJECT/Cargo.toml" --all-targets -- -D warnings >/dev/null 2>&1; then
     CLIPPY_OK=true
   fi
   if cargo test --manifest-path "$PROJECT/Cargo.toml" >/dev/null 2>&1; then
@@ -165,10 +182,10 @@ if [ -x "$ACCEPTANCE_SCRIPT" ]; then
 fi
 
 # Write result using Python for valid JSON.
-python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$REPO_COMMIT" "$TASK_HASH" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$TASK_FIXTURE" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" <<'PY'
+python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$REPO_COMMIT" "$TASK_HASH" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$TASK_FIXTURE" "$TASK_TRIGGER" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" <<'PY'
 import json, sys, os
 (trial_dir, task, with_skill, repository_commit, task_hash, exit_status, timed_out, elapsed, skill_hash, injected,
- activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, fixture, acceptance, details) = sys.argv[1:]
+ activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, fixture, expected_trigger, acceptance, details) = sys.argv[1:]
 result = {
     "task": os.path.basename(task),
     "repository_commit": repository_commit,
@@ -186,6 +203,7 @@ result = {
     "provider": os.environ.get("EVAL_PROVIDER", "not recorded"),
     "model_settings": os.environ.get("EVAL_MODEL_SETTINGS", "not recorded"),
     "task_fixture": fixture or None,
+    "expected_skill_trigger": expected_trigger or None,
     "compile_ok": compile_ok == "true",
     "clippy_ok": clippy_ok == "true",
     "test_ok": test_ok == "true",
