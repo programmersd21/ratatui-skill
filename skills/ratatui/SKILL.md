@@ -60,7 +60,11 @@ Write this before any code. Every line justified from the app's actual data.
 
 ## 3. Build
 
-Start from `templates/dirview/`. Copy the structure, then replace the domain.
+**New app:** start from `templates/dirview/`. Copy the structure, then
+replace the domain. Rename the crate reference in `main.rs`.
+
+**Existing app:** do not copy the template. Read the existing code first.
+Make the smallest change. Preserve existing dependencies and patterns.
 
 | File | Job |
 |---|---|

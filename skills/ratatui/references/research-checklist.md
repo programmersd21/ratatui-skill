@@ -38,3 +38,10 @@ When unsure whether a call exists, write a ten-line program that uses it and run
 - Pin by letting `cargo add` write the current version; commit `Cargo.lock` for binaries.
 - Set `rust-version` in `Cargo.toml` to the highest MSRV among your dependencies, and say so in the README.
 - Put lint levels in `[lints]` in `Cargo.toml` so they travel with the project.
+
+## Template copying pitfall
+
+When copying `templates/dirview/`, rename the crate reference in `src/main.rs`
+(`use dirview::App;`) to match the new crate name. The library crate name comes
+from the `[package] name` in `Cargo.toml` (with hyphens converted to underscores).
+Forgetting this produces `unresolved import` at compile time.

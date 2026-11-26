@@ -19,5 +19,7 @@ and PTY interaction.
 
 ## Status
 
-All tasks below are **proposed**. No trials have been run yet. Results will be
+All 10 tasks are **proposed**. One partial trial has been run
+(Eval 01, with skill). Results in `evals/results/`. The trial timed out but
+produced useful findings (template crate-rename pitfall, now documented). Results will be
 added to `evals/results/` once executed.
