@@ -4,7 +4,7 @@
 //! from `bindings`, so a key that works is always documented and a documented
 //! key always works.
 
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::action::Action;
 use crate::state::Mode;
@@ -73,14 +73,14 @@ static NORMAL: &[Binding] = &[
     Binding {
         keys: &[ch('l'), plain(KeyCode::Right), plain(KeyCode::Enter)],
         action: Action::Enter,
-        label: "l / Enter",
+        label: "l / Right / Enter",
         help: "Open directory",
         hint: hint("l", "open"),
     },
     Binding {
         keys: &[ch('h'), plain(KeyCode::Left), plain(KeyCode::Backspace)],
         action: Action::Parent,
-        label: "h / Backspace",
+        label: "h / Left / Backspace",
         help: "Go to parent directory",
         hint: hint("h", "back"),
     },
@@ -266,6 +266,19 @@ mod tests {
         for mode in MODES {
             for b in bindings(mode) {
                 assert!(!b.label.is_empty() && !b.help.is_empty());
+                for key in b.keys {
+                    let visible = match key.code {
+                        KeyCode::Left => "Left", KeyCode::Right => "Right",
+                        KeyCode::Enter => "Enter", KeyCode::Backspace => "Backspace",
+                        KeyCode::Up => "Up", KeyCode::Down => "Down",
+                        KeyCode::Home => "Home", KeyCode::End => "End",
+                        KeyCode::PageUp => "PgUp", KeyCode::PageDown => "PgDn",
+                        KeyCode::Esc => "Esc", KeyCode::Char(c) => {
+                            if c.is_ascii_alphabetic() { "character" } else { "symbol" }
+                        }, _ => "key",
+                    };
+                    assert!(b.label.contains(visible), "{visible} missing from {}", b.label);
+                }
             }
         }
     }
