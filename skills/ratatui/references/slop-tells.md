@@ -61,3 +61,66 @@ if entries.is_empty() {
     render_empty(frame, area, "empty directory");
 }
 ```
+
+## Formal anti-slop design standard
+
+### Prohibited decorative defaults
+
+Reject unless justified by a real product need:
+
+- Neon purple/cyan gradients
+- Glowing borders
+- Decorative banners
+- Fake status indicators
+- Fake statistics or activity feeds
+- Placeholder rows
+- Empty panels
+- Unnecessary mascots
+- Emoji used as generic icons
+- Nested borders everywhere
+- Excessive separators
+- Redundant headings
+- Marketing copy inside developer tools
+- Unnecessary welcome screens
+- Fake loading indicators
+- Decorative animations
+- Unnecessary badges
+- Redundant status labels
+
+### Information honesty
+
+Every visible value must be real. No fabricated data, no invented progress, no
+misleading success messages, no hardcoded metrics presented as live information.
+When there is no data, show an honest empty state.
+
+### Typography and copy
+
+- Short, clear labels.
+- Consistent terminology.
+- Sentence-case labels.
+- Concise error messages.
+- No unnecessary slogans.
+- No assistant-style conversational leftovers.
+- No exaggerated marketing adjectives.
+- No redundant explanatory text.
+
+### Product-specific decisions
+
+The agent must decide what information matters most, what users do most
+frequently, what needs immediate attention, and what can be removed. Every
+design choice should have a product reason, not a template default.
+
+### Human review checklist
+
+- Can a first-time user understand the screen?
+- Is the primary content immediately obvious?
+- Does every panel contain useful information?
+- Does every key binding work?
+- Can the interface be used without color?
+- Does resizing preserve usability?
+- Are empty and error states honest?
+- Is the screen too dense or too padded?
+- Can any element be removed without losing information?
+- Does the UI look like a considered product rather than a generic template?
+
+A clean lint scan is not proof of design quality. It is a mechanical guardrail.

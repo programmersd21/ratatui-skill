@@ -64,3 +64,152 @@ Define colors **by role** (`text`, `muted`, `accent`, `selected`, `error`) in on
 | Error | The reason, in plain words |
 | Too small | The size needed and the size you have |
 | No results (filtered) | The filter text, so the user can see why |
+
+## Semantic design tokens (terminal-native)
+
+Tokens are role names, not colors. The theme maps each role to a style. Default
+to the 16 ANSI colors so the user's palette applies; monochrome keeps bold, dim
+and reverse video.
+
+### Foreground roles
+
+- `text.primary`: main content.
+- `text.secondary`: supporting information.
+- `text.subtle`: metadata, timestamps, hints.
+- `text.disabled`: inactive or unavailable items.
+
+### Accent
+
+- `accent.primary`: one restrained accent for the most important emphasis.
+- `accent.focus`: focus indicator, usually the same as primary.
+
+### Semantic states
+
+- `state.success`: only for genuine success.
+- `state.warning`: only for genuine warnings.
+- `state.danger`: only for genuine errors or destructive actions.
+- `state.info`: only for neutral informational status.
+
+### Selection
+
+- `selection.foreground` and `selection.background`, or reverse video as a
+  fallback on terminals without color.
+
+### Borders
+
+- `border.default`: normal panel borders.
+- `border.subtle`: dividers and separators.
+- `border.focus`: focused pane border.
+
+### Typography roles
+
+- `type.title`: screen or panel title.
+- `type.section`: section header.
+- `type.body`: normal content.
+- `type.secondary`: supporting text.
+- `type.emphasis`: highlighted inline text.
+
+Terminals do not provide arbitrary font weights. Use bold, dim and normal
+intensity only.
+
+### Spacing scale (cell units)
+
+- `space.none`: 0 cells.
+- `space.xs`: 1 cell.
+- `space.sm`: 2 cells.
+- `space.md`: 4 cells.
+- `space.lg`: 8 cells.
+
+Use these consistently. No arbitrary padding values.
+
+### Layout regions
+
+- `layout.header`: one row, title and summary.
+- `layout.content`: fills remaining space.
+- `layout.footer`: one row, hints or prompt.
+- `layout.gutter`: 1-2 cells between panes.
+
+### Interaction states
+
+- `interaction.normal`: default.
+- `interaction.focused`: has keyboard focus.
+- `interaction.selected`: currently selected item.
+- `interaction.disabled`: cannot be acted on.
+
+Selection and focus must not be confused. A selected item in an unfocused pane
+looks different from a focused item.
+
+## Visual hierarchy rules
+
+1. Primary content dominates. Metadata is subtle.
+2. One accent color. Secondary information is dim, not a second color.
+3. Borders group; whitespace separates. One border style.
+4. No box inside a box.
+5. No forced background. Terminal transparency survives.
+6. Color is never the only signal. Bold, dim and reverse carry meaning.
+7. Every visible element earns its place. If it can be removed without losing
+   information, remove it.
+
+## Terminal-native geometry
+
+- The cell is the unit. Everything is measured in columns and rows.
+- Measure text with `unicode-width`. CJK characters occupy two cells.
+- Truncate with an ellipsis, never clip silently.
+- Below the minimum size, show a message with the required and actual dimensions.
+- Drop secondary panes instead of crushing everything.
+- Prefer vertical scrolling over horizontal scrolling.
+
+## Component patterns
+
+### Header
+
+One row. Title on the left, summary on the right. No border.
+
+### Footer
+
+One row. Contextual key hints that change with mode. Filter prompt shows a
+cursor. Status messages use `text.subtle` for success, `state.danger` for errors.
+
+### List row
+
+Checkbox or icon, then text, then optional metadata right-aligned. Truncate the
+text, never the metadata.
+
+### Selected row
+
+Reverse video or a distinct background. Must be visible in monochrome.
+
+### Focused pane
+
+Border changes from `border.default` to `border.focus`. Only one pane is focused
+at a time.
+
+### Help overlay
+
+Generated from the keymap. Shows all bindings grouped by mode. Closes with Esc,
+? or q. Must fit or scroll at 40x8.
+
+### Empty state
+
+Say why it is empty and what to do. Centered, muted.
+
+### Error state
+
+Show the reason in plain words. Keep the previous state usable.
+
+### Too-small state
+
+Show required and actual dimensions. Centered.
+
+### Confirmation prompt
+
+Name what will be lost. Offer y/n or the specific keys. Never default to
+destructive.
+
+## Motion principles
+
+- No animation that delays keyboard input.
+- No decorative movement.
+- Use animation only to communicate real state or progress.
+- Provide stable non-animated behavior.
+- A static interface with excellent hierarchy beats a noisy animated one.
