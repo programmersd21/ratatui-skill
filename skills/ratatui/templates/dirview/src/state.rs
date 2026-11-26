@@ -64,7 +64,6 @@ pub enum Preview {
     Dir {
         names: Vec<String>,
         total: usize,
-        truncated: bool,
     },
     Text {
         lines: Vec<String>,

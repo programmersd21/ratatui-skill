@@ -1,5 +1,6 @@
 //! Reading the file system. No terminal types in here.
 
+use std::cmp::Ordering;
 use std::io::{self, Read};
 use std::path::Path;
 use std::time::SystemTime;
@@ -52,40 +53,70 @@ pub fn preview(path: &Path, kind: EntryKind) -> Preview {
     }
 }
 
+fn compare_preview_entries(
+    a: &(bool, String, String),
+    b: &(bool, String, String),
+) -> Ordering {
+    b.0.cmp(&a.0)
+        .then_with(|| a.2.cmp(&b.2))
+        .then_with(|| a.1.cmp(&b.1))
+}
+
+fn entry_is_dir(entry: &std::fs::DirEntry) -> io::Result<bool> {
+    let file_type = entry.file_type()?;
+    if !file_type.is_symlink() {
+        return Ok(file_type.is_dir());
+    }
+
+    match entry.path().metadata() {
+        Ok(metadata) => Ok(metadata.is_dir()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
 fn dir_preview(path: &Path) -> Preview {
     let entries = match std::fs::read_dir(path) {
         Ok(entries) => entries,
         Err(error) => return Preview::Error(error.to_string()),
     };
     let mut names = Vec::with_capacity(PREVIEW_NAMES);
-    let mut truncated = false;
-    for entry in entries.take(PREVIEW_NAMES + 1) {
+    let mut total = 0usize;
+
+    for entry in entries {
         let entry = match entry {
             Ok(entry) => entry,
             Err(error) => return Preview::Error(error.to_string()),
         };
-        if names.len() == PREVIEW_NAMES {
-            truncated = true;
-            break;
-        }
+        let is_dir = match entry_is_dir(&entry) {
+            Ok(is_dir) => is_dir,
+            Err(error) => return Preview::Error(error.to_string()),
+        };
         let name = entry.file_name().to_string_lossy().into_owned();
-        let is_dir = entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false);
-        names.push((is_dir, name));
+        let candidate = (is_dir, name.clone(), name.to_lowercase());
+        total = total.saturating_add(1);
+
+        let index = names
+            .binary_search_by(|current| compare_preview_entries(current, &candidate))
+            .unwrap_or_else(|index| index);
+        if index < PREVIEW_NAMES {
+            names.insert(index, candidate);
+            names.truncate(PREVIEW_NAMES);
+        }
     }
-    names.sort_by(|a, b| {
-        b.0.cmp(&a.0)
-            .then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
-    });
-    let total = names.len() + usize::from(truncated);
+
     let names = names
         .into_iter()
-        .map(|(is_dir, name)| if is_dir { format!("{name}/") } else { name })
+        .map(|entry| {
+            if entry.0 {
+                format!("{}/", entry.1)
+            } else {
+                entry.1
+            }
+        })
         .collect();
-    Preview::Dir {
-        names,
-        total,
-        truncated,
-    }
+
+    Preview::Dir { names, total }
 }
 
 fn file_preview(path: &Path) -> Preview {
@@ -117,20 +148,68 @@ fn file_preview(path: &Path) -> Preview {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new(name: &str) -> io::Result<Self> {
+            let path = std::env::temp_dir().join(format!(
+                "dirview-preview-{name}-{}",
+                std::process::id()
+            ));
+            if path.exists() {
+                std::fs::remove_dir_all(&path)?;
+            }
+            std::fs::create_dir_all(&path)?;
+            Ok(Self(path))
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _cleanup = std::fs::remove_dir_all(&self.0);
+        }
+    }
 
     #[test]
-    fn directory_preview_is_bounded_and_marks_truncation() -> io::Result<()> {
-        let root = std::env::temp_dir().join(format!("dirview-preview-{}", std::process::id()));
-        let _cleanup = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root)?;
-        for index in 0..(PREVIEW_NAMES + 50) {
-            std::fs::write(root.join(format!("entry-{index:03}")), "")?;
+    fn directory_preview_keeps_the_sorted_sample_and_exact_total() -> io::Result<()> {
+        let root = TempDir::new("sorted")?;
+        for index in (0..PREVIEW_NAMES + 50).rev() {
+            std::fs::write(root.0.join(format!("entry-{index:03}")), "")?;
         }
-        let preview = dir_preview(&root);
-        assert!(
-            matches!(preview, Preview::Dir { names, total, truncated: true } if names.len() == PREVIEW_NAMES && total == PREVIEW_NAMES + 1)
-        );
-        std::fs::remove_dir_all(root)?;
+
+        match dir_preview(&root.0) {
+            Preview::Dir { names, total } => {
+                assert_eq!(names.len(), PREVIEW_NAMES);
+                assert_eq!(total, PREVIEW_NAMES + 50);
+                assert_eq!(names.first().map(String::as_str), Some("entry-000"));
+                assert_eq!(names.last().map(String::as_str), Some("entry-199"));
+            }
+            other => panic!("expected directory preview, got {other:?}"),
+        }
+        Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn directory_preview_follows_directory_symlinks() -> io::Result<()> {
+        use std::os::unix::fs::symlink;
+
+        let root = TempDir::new("symlinks")?;
+        std::fs::create_dir(root.0.join("target"))?;
+        std::fs::write(root.0.join("target/inner.txt"), "")?;
+        symlink(root.0.join("target"), root.0.join("linked"))?;
+        symlink(root.0.join("missing"), root.0.join("broken"))?;
+
+        match dir_preview(&root.0) {
+            Preview::Dir { names, total } => {
+                assert_eq!(total, 3);
+                assert!(names.contains(&"linked/".to_owned()));
+                assert!(names.contains(&"broken".to_owned()));
+            }
+            other => panic!("expected directory preview, got {other:?}"),
+        }
         Ok(())
     }
 }

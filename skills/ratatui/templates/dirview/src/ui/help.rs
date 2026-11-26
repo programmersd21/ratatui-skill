@@ -6,59 +6,78 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Clear, Paragraph};
 
 use super::text::width;
+use crate::action::Action;
 use crate::keymap::{self, Binding};
 use crate::state::Mode;
 use crate::theme::Theme;
 
-const KEY_COLUMN: usize = 16;
 const MAX_WIDTH: u16 = 58;
 
-pub fn render(frame: &mut Frame, area: Rect, theme: &Theme, offset: usize) {
-    let mut lines = vec![Line::styled("Browse", theme.title)];
-    lines.extend(keymap::bindings(Mode::Normal).iter().map(|b| row(b, theme)));
-    lines.push(Line::raw(""));
-    lines.push(Line::styled("While filtering", theme.title));
-    lines.extend(keymap::bindings(Mode::Filter).iter().map(|b| row(b, theme)));
+pub fn render(frame: &mut Frame, area: Rect, theme: &Theme, offset: &mut usize) -> usize {
+    let sections = [
+        ("Browse", Mode::Normal),
+        ("While filtering", Mode::Filter),
+        ("Help", Mode::Help),
+    ];
+    let key_column = sections
+        .iter()
+        .flat_map(|(_, mode)| keymap::bindings(*mode))
+        .map(|binding| width(binding.label))
+        .max()
+        .unwrap_or(0)
+        + 2;
+
+    let mut lines = Vec::new();
+    for (index, (title, mode)) in sections.iter().enumerate() {
+        if index > 0 {
+            lines.push(Line::raw(""));
+        }
+        lines.push(Line::styled(*title, theme.title));
+        lines.extend(
+            keymap::bindings(*mode)
+                .iter()
+                .map(|binding| row(binding, theme, key_column)),
+        );
+    }
 
     let max_height = area.height.saturating_sub(2).max(4);
     let content_height = u16::try_from(lines.len()).unwrap_or(u16::MAX);
     let height = content_height.saturating_add(2).min(max_height);
     let popup = centered(area, MAX_WIDTH.min(area.width), height);
+    let page_size = popup.height.saturating_sub(2).max(1) as usize;
+    let max_offset = lines.len().saturating_sub(page_size);
+    *offset = (*offset).min(max_offset);
 
-    // When the content does not fit, drop the least important lines and show
-    // a scroll hint instead of silently clipping.
-    let inner_height = height.saturating_sub(2) as usize;
-    let truncated = lines.len() > inner_height;
-    if truncated {
-        lines.truncate(inner_height.saturating_sub(1));
-        lines.push(Line::styled("  ... (resize for more)", theme.muted));
-    }
-
+    let close_hint = keymap::bindings(Mode::Help)
+        .iter()
+        .find(|binding| binding.action == Action::ToggleHelp)
+        .and_then(|binding| binding.hint);
     let mut block = Block::bordered()
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focus)
         .title(Line::styled(" Keys ", theme.title));
-    if let Some(hint) = keymap::bindings(Mode::Help).iter().find_map(|b| b.hint) {
-        let close = format!(" {} {} ", hint.keys, hint.text);
-        block = block.title_bottom(Line::styled(close, theme.muted));
+    if let Some(hint) = close_hint {
+        block = block.title_bottom(Line::styled(
+            format!(" {} {} ", hint.keys, hint.text),
+            theme.muted,
+        ));
     }
+
     frame.render_widget(Clear, popup);
-    let max_offset = lines
-        .len()
-        .saturating_sub(popup.height.saturating_sub(2) as usize);
-    let offset = offset.min(max_offset);
     frame.render_widget(
         Paragraph::new(lines)
-            .scroll((u16::try_from(offset).unwrap_or(u16::MAX), 0))
+            .scroll((u16::try_from(*offset).unwrap_or(u16::MAX), 0))
             .block(block),
         popup,
     );
+    page_size
 }
 
-fn row(binding: &Binding, theme: &Theme) -> Line<'static> {
-    let pad = KEY_COLUMN.saturating_sub(width(binding.label));
+fn row(binding: &Binding, theme: &Theme, key_column: usize) -> Line<'static> {
+    let label = format!(" {}", binding.label);
+    let pad = key_column.saturating_sub(width(&label));
     Line::from(vec![
-        Span::styled(format!(" {}", binding.label), theme.accent),
+        Span::styled(label, theme.accent),
         Span::raw(" ".repeat(pad)),
         Span::styled(binding.help, theme.text),
     ])

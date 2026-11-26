@@ -31,6 +31,7 @@ pub struct ViewState {
     offset: usize,
     rows: usize,
     help_offset: usize,
+    help_page_size: usize,
 }
 
 impl ViewState {
@@ -43,6 +44,10 @@ impl ViewState {
         self.help_offset
     }
 
+    pub fn help_page_size(&self) -> usize {
+        self.help_page_size
+    }
+
     pub fn scroll_help(&mut self, amount: isize) {
         self.help_offset = self.help_offset.saturating_add_signed(amount);
     }
@@ -51,6 +56,7 @@ impl ViewState {
 pub fn render(frame: &mut Frame, state: &State, view: &mut ViewState, theme: &Theme) {
     let area = frame.area();
     if area.width < MIN_WIDTH || area.height < MIN_HEIGHT {
+        view.help_page_size = 0;
         render_too_small(frame, theme);
         return;
     }
@@ -76,9 +82,11 @@ pub fn render(frame: &mut Frame, state: &State, view: &mut ViewState, theme: &Th
 
     footer::render(frame, footer.inner(margin), state, theme);
 
-    if state.mode() == Mode::Help {
-        help::render(frame, area, theme, view.help_offset());
-    }
+    view.help_page_size = if state.mode() == Mode::Help {
+        help::render(frame, area, theme, &mut view.help_offset)
+    } else {
+        0
+    };
 }
 
 fn render_header(frame: &mut Frame, area: Rect, state: &State, theme: &Theme) {

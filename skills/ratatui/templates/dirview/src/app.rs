@@ -38,11 +38,12 @@ impl App {
 
             if let Some(action) = event::next_action(self.state.mode())? {
                 if self.state.mode() == crate::state::Mode::Help {
+                    let page_size = self.view.help_page_size().max(1) as isize;
                     match action {
                         Action::HelpScrollUp => self.view.scroll_help(-1),
                         Action::HelpScrollDown => self.view.scroll_help(1),
-                        Action::HelpPageUp => self.view.scroll_help(-8),
-                        Action::HelpPageDown => self.view.scroll_help(8),
+                        Action::HelpPageUp => self.view.scroll_help(-page_size),
+                        Action::HelpPageDown => self.view.scroll_help(page_size),
                         _ => self.state.update(action),
                     }
                 } else {

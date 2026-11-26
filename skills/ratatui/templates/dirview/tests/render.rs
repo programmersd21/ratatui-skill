@@ -133,9 +133,45 @@ fn help_overlay_lists_the_real_keys() -> Result {
     let mut state = State::open(fx.0.clone())?;
     state.update(Action::ToggleHelp);
     let text = screen(&state, 100, 40)?;
-    for expected in ["Keys", "Filter by name", "Cycle sort", "Quit", "Esc close"] {
+    for expected in [
+        "Keys",
+        "Filter by name",
+        "Cycle sort",
+        "Quit",
+        "Scroll one page down",
+        "Scroll one page up",
+        "Esc close",
+    ] {
         assert!(text.contains(expected), "missing {expected:?}\n{text}");
     }
+    Ok(())
+}
+
+#[test]
+fn help_scroll_clamps_and_uses_the_visible_page_size() -> Result {
+    let fx = Fixture::new("help-scroll")?;
+    let mut state = State::open(fx.0.clone())?;
+    state.update(Action::ToggleHelp);
+    let mut terminal = Terminal::new(TestBackend::new(40, 8))?;
+    let mut view = ViewState::default();
+    let theme = Theme::mono();
+
+    terminal.draw(|frame| ui::render(frame, &state, &mut view, &theme))?;
+    let page_size = view.help_page_size();
+    assert!(page_size > 0);
+
+    view.scroll_help(isize::MAX);
+    terminal.draw(|frame| ui::render(frame, &state, &mut view, &theme))?;
+    let end = view.help_offset();
+    assert!(end > 0);
+
+    view.scroll_help(-1);
+    terminal.draw(|frame| ui::render(frame, &state, &mut view, &theme))?;
+    assert_eq!(view.help_offset(), end - 1);
+
+    view.scroll_help(-(page_size as isize));
+    terminal.draw(|frame| ui::render(frame, &state, &mut view, &theme))?;
+    assert!(view.help_offset() < end - 1);
     Ok(())
 }
 
