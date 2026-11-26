@@ -195,11 +195,11 @@ tells the assistant to:
 <summary><b>Why a "slop scan"?</b></summary>
 <br>
 
-**Generated UIs are recognizable, so the scanner fails CI on the mechanical tells.**
+**The scanner is deliberately narrow. It is a guardrail, not an AI-slop detector.**
 
-Emoji icons, neon gradients, placeholder rows and comments that narrate the code
-are checked by [`lint-slop.sh`](skills/ratatui/scripts/lint-slop.sh). The rest are
-judgment calls listed in
+It checks a small set of mechanical source conventions. It cannot reliably
+judge visual hierarchy, fake data, unnecessary abstractions, or whether a design
+fits the product. Those require behavior tests and human review. See
 [`references/slop-tells.md`](skills/ratatui/references/slop-tells.md).
 
 </details>

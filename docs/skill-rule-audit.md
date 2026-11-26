@@ -26,7 +26,8 @@ The purpose is to prevent preferences from silently becoming universal requireme
 | Use PTY or recording-based integration tests | Required when terminal lifecycle or real input is in scope; otherwise optional | Unit tests cannot prove terminal interaction, but PTY tests are unnecessary for every local state change. |
 | Use the dirview template | Optional | It is an example. Its architecture may not fit every product. |
 | Write a design brief | Optional, scaled to complexity | A short plan helps complex interfaces; a tiny focused change does not need ceremony. |
-| Use exactly one accent color or a fixed ANSI palette | Optional | Visual direction depends on the application, terminal support, and user requirements. |
+| Use exactly one accent color or a fixed ANSI palette | Optional | Visual direction depends on the application, terminal support, and user requirements. | 
+| Keep all color constructors inside a theme module | Optional repository convention | Can help larger applications centralize semantic styles; should not be enforced as a universal Ratatui rule. |
 | Require a fixed file/module layout | Optional | Modules should represent real boundaries, not satisfy a template. |
 | Ban emoji or decorative styling universally | Optional style guidance | Taste is not correctness; apply only when it fits the product. |
 
@@ -47,4 +48,4 @@ Do not cite a project preference as a Ratatui requirement. An accepted implement
 
 The repository has ten task specifications and a trial harness. The committed results do not currently establish that the skill improves Rust task outcomes: the recorded Rust generation trial timed out, and the completed comparison concerns a non-Ratatui task. See `evals/results/summary.md`.
 
-The harness is being improved to stage existing-project fixtures and distinguish automated acceptance from ungraded trials. Do not claim skill effectiveness until comparable real-model trials have been completed and reviewed.
+The harness stages existing-project fixtures and distinguishes automated acceptance from ungraded trials. The current trial runner records operator-supplied model metadata, the task specification hash, repository commit, and skill content hash. Do not claim skill effectiveness until comparable real-model trials have been completed and reviewed.
