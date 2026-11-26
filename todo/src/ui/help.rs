@@ -35,8 +35,10 @@ fn render_help(frame: &mut Frame, area: Rect, theme: &Theme) {
             .map(|b| row(b, theme)),
     );
 
-    let height = u16::try_from(lines.len() + 2).unwrap_or(u16::MAX);
-    let popup = centered(area, MAX_WIDTH.min(area.width), height.min(area.height));
+    let max_height = area.height.saturating_sub(2).max(4);
+    let height = u16::try_from(lines.len() + 2)
+        .unwrap_or(u16::MAX)
+        .min(max_height);
 
     let mut block = Block::bordered()
         .border_type(BorderType::Rounded)
@@ -46,6 +48,7 @@ fn render_help(frame: &mut Frame, area: Rect, theme: &Theme) {
         let close = format!(" {} {} ", hint.keys, hint.text);
         block = block.title_bottom(Line::styled(close, theme.muted));
     }
+    let popup = centered(area, MAX_WIDTH.min(area.width), height);
     frame.render_widget(Clear, popup);
     frame.render_widget(Paragraph::new(lines).block(block), popup);
 }

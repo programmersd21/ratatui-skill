@@ -20,8 +20,19 @@ pub fn render(frame: &mut Frame, area: Rect, theme: &Theme, offset: usize) {
     lines.push(Line::styled("While filtering", theme.title));
     lines.extend(keymap::bindings(Mode::Filter).iter().map(|b| row(b, theme)));
 
-    let height = u16::try_from(lines.len() + 2).unwrap_or(u16::MAX);
-    let popup = centered(area, MAX_WIDTH.min(area.width), height.min(area.height));
+    let max_height = area.height.saturating_sub(2).max(4);
+    let content_height = u16::try_from(lines.len()).unwrap_or(u16::MAX);
+    let height = content_height.saturating_add(2).min(max_height);
+    let popup = centered(area, MAX_WIDTH.min(area.width), height);
+
+    // When the content does not fit, drop the least important lines and show
+    // a scroll hint instead of silently clipping.
+    let inner_height = height.saturating_sub(2) as usize;
+    let truncated = lines.len() > inner_height;
+    if truncated {
+        lines.truncate(inner_height.saturating_sub(1));
+        lines.push(Line::styled("  ... (resize for more)", theme.muted));
+    }
 
     let mut block = Block::bordered()
         .border_type(BorderType::Rounded)
