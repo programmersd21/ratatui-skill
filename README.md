@@ -84,7 +84,7 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 
 </details>
 
-<details>
+<details open>
 <summary><b>The rules it enforces</b></summary>
 
 - Everything visible works. No fake data, decorative panels or dead keys.

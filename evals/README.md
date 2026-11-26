@@ -19,9 +19,15 @@ and PTY interaction.
 
 ## Status
 
-All 10 tasks are **proposed**. Two partial trials have been run:
-- Eval 01 (with skill): timed out at 180s, generated partial code following skill structure.
-- Eval 10 (no-trigger): completed, correctly did not trigger skill.
+All 10 tasks are **proposed**. Harness v2 is implemented with:
+- Real skill injection (copy to isolated opencode config, verify presence)
+- Honest exit status (no `|| true` suppression)
+- Timeout classification (exit 124 = timeout)
+- Separate stdout/stderr logs
+- Skill content hash (not git HEAD)
+- Language-aware (Rust vs Python)
+- Configurable timeout
 
-Results in `evals/results/`. Full trials require ~10 min each; harness is ready. Results will be
+Two partial trials have been run. Results in `evals/results/`.
+Full trials require ~10 min each with a real model. Results will be
 added to `evals/results/` once executed.
