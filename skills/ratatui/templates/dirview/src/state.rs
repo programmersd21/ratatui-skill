@@ -194,6 +194,7 @@ impl State {
                 };
             }
             Action::Quit => self.quit = true,
+            Action::HelpScrollUp | Action::HelpScrollDown | Action::HelpPageUp | Action::HelpPageDown => {},
             Action::SetPageSize(_) => {}
         }
     }
