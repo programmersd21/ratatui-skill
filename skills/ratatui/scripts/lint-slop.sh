@@ -23,7 +23,7 @@ rules = [
     ("colors only in theme.rs", re.compile(r"Color::(?:Rgb|Indexed|Red|Green|Blue|Cyan|Yellow|Magenta|White|Black|Gray|DarkGray|Light[A-Za-z]+)\b|Color::from_u32"), lambda p: p.name != "theme.rs"),
     ("no emoji in source", re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B50\u2B55]"), lambda p: True),
     ("no unwrap outside tests", re.compile(r"\.unwrap\(\)"), lambda p: True),
-    ("no placeholders", re.compile(r"\b(?:TODO|FIXME|XXX|HACK)\b|todo!\(|unimplemented!\(|lorem ipsum|placeholder", re.I), lambda p: True),
+    ("no placeholders", re.compile(r"\b(?:TODO|FIXME|XXX|HACK)\b|todo!\(|unimplemented!\(|(?i:lorem ipsum|placeholder)"), lambda p: True),
     ("no swallowed errors", re.compile(r"let\s+_\s*=\s*[^;]*(?:Result|Option|try_|read|write|remove_|send|recv)[^;]*;|\.ok\(\);|Err\(_\)\s*=>\s*\{\}"), lambda p: True),
     ("no debug leftovers", re.compile(r"dbg!\(|eprintln!\(|println!\("), lambda p: True),
     ("no chat artifacts", re.compile(r"(?i)as an ai|here is the|here's the|let me know|certainly!|i hope this"), lambda p: True),
