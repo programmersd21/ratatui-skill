@@ -181,11 +181,41 @@ static FILTER: &[Binding] = &[
 ];
 
 static HELP: &[Binding] = &[
-    Binding { keys: &[ch('j'), plain(KeyCode::Down)], action: Action::HelpScrollDown, label: "j / Down", help: "Scroll down", hint: hint("j/k", "scroll") },
-    Binding { keys: &[ch('k'), plain(KeyCode::Up)], action: Action::HelpScrollUp, label: "k / Up", help: "Scroll up", hint: None },
-    Binding { keys: &[plain(KeyCode::PageDown)], action: Action::HelpPageDown, label: "PgDn", help: "Scroll one page down", hint: None },
-    Binding { keys: &[plain(KeyCode::PageUp)], action: Action::HelpPageUp, label: "PgUp", help: "Scroll one page up", hint: None },
-    Binding { keys: &[plain(KeyCode::Esc), ch('?'), ch('q')], action: Action::ToggleHelp, label: "Esc / ? / q", help: "Close help", hint: hint("Esc", "close") },
+    Binding {
+        keys: &[ch('j'), plain(KeyCode::Down)],
+        action: Action::HelpScrollDown,
+        label: "j / Down",
+        help: "Scroll down",
+        hint: hint("j/k", "scroll"),
+    },
+    Binding {
+        keys: &[ch('k'), plain(KeyCode::Up)],
+        action: Action::HelpScrollUp,
+        label: "k / Up",
+        help: "Scroll up",
+        hint: None,
+    },
+    Binding {
+        keys: &[plain(KeyCode::PageDown)],
+        action: Action::HelpPageDown,
+        label: "PgDn",
+        help: "Scroll one page down",
+        hint: None,
+    },
+    Binding {
+        keys: &[plain(KeyCode::PageUp)],
+        action: Action::HelpPageUp,
+        label: "PgUp",
+        help: "Scroll one page up",
+        hint: None,
+    },
+    Binding {
+        keys: &[plain(KeyCode::Esc), ch('?'), ch('q')],
+        action: Action::ToggleHelp,
+        label: "Esc / ? / q",
+        help: "Close help",
+        hint: hint("Esc", "close"),
+    },
 ];
 
 pub fn bindings(mode: Mode) -> &'static [Binding] {
@@ -266,8 +296,12 @@ mod tests {
         for mode in MODES {
             for b in bindings(mode) {
                 assert!(!b.label.is_empty() && !b.help.is_empty());
-                if b.action == Action::Enter { assert!(b.label.contains("Right")); }
-                if b.action == Action::Parent { assert!(b.label.contains("Left")); }
+                if b.action == Action::Enter {
+                    assert!(b.label.contains("Right"));
+                }
+                if b.action == Action::Parent {
+                    assert!(b.label.contains("Left"));
+                }
             }
         }
     }
