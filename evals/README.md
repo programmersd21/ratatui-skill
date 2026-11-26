@@ -19,7 +19,9 @@ and PTY interaction.
 
 ## Status
 
-All 10 tasks are **proposed**. One partial trial has been run
-(Eval 01, with skill). Results in `evals/results/`. The trial timed out but
-produced useful findings (template crate-rename pitfall, now documented). Results will be
+All 10 tasks are **proposed**. Two partial trials have been run:
+- Eval 01 (with skill): timed out at 180s, generated partial code following skill structure.
+- Eval 10 (no-trigger): completed, correctly did not trigger skill.
+
+Results in `evals/results/`. Full trials require ~10 min each; harness is ready. Results will be
 added to `evals/results/` once executed.

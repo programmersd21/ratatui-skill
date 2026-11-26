@@ -7,11 +7,18 @@ set -euo pipefail
 TASK_FILE="${1:?task file required}"
 WITH_SKILL="${2:?0 or 1}"
 TRIAL_DIR="${3:?trial dir required}"
+TRIAL_DIR="$(cd "$TRIAL_DIR" 2>/dev/null && pwd || (mkdir -p "$TRIAL_DIR" && cd "$TRIAL_DIR" && pwd))"
 
 mkdir -p "$TRIAL_DIR"
 TASK=$(cat "$TASK_FILE")
 
 PROJECT="$TRIAL_DIR/project"
+# opencode sandbox only allows paths under the repo root; ensure it exists there.
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+if [[ "$TRIAL_DIR" != "$REPO_ROOT"* ]]; then
+  echo "TRIAL_DIR must be under the repo root for opencode sandbox access" >&2
+  exit 2
+fi
 mkdir -p "$PROJECT"
 cd "$PROJECT"
 

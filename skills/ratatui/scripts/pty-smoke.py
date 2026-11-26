@@ -135,6 +135,7 @@ def main():
     parser.add_argument("--timeout", type=float, default=5.0, help="seconds to wait for events")
     parser.add_argument("--check-ctrl-c", action="store_true", help="test the Ctrl-C keymap event")
     parser.add_argument("--check-color", action="store_true", help="test color under NO_COLOR")
+    parser.add_argument("--check-resize", action="store_true", help="resize the running app and check it survives")
     parser.add_argument("binary", nargs=argparse.REMAINDER, help="binary and its arguments")
     args = parser.parse_args()
 
@@ -168,6 +169,25 @@ def main():
             bool(words) and all(w in visible for w in words),
             f"visible={visible[:300]!r}",
         )
+
+    if args.check_resize:
+        # Resize the running app: start at 80x24, shrink to 40x8, grow to 120x40.
+        # The app must not crash or leave the alternate screen.
+        sess = Session(args.binary, size=(24, 80), timeout=args.timeout)
+        sess.wait_ready()
+        fcntl.ioctl(sess.master, termios.TIOCSWINSZ, struct.pack("HHHH", 8, 40, 0, 0))
+        sess.drain(0.5)
+        fcntl.ioctl(sess.master, termios.TIOCSWINSZ, struct.pack("HHHH", 40, 120, 0, 0))
+        sess.drain(0.5)
+        # Quit after resize to verify clean shutdown.
+        try:
+            os.write(sess.master, b"q")
+        except OSError:
+            pass
+        sess.drain(0.3)
+        code = sess.finish()
+        check("survives terminal resize", code == 0, f"exit={code}")
+        sess.__exit__(None, None, None)
 
     if quit_keys:
         code, _ = Session(args.binary, size=size, timeout=args.timeout).exit(quit_keys)

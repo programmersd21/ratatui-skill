@@ -103,7 +103,7 @@ Then:
 2. **PTY smoke.** `$SKILL_DIR/scripts/pty-smoke.py PATH/TO/BINARY`. Universal
    checks run by default (startup, alternate screen, tiny terminal, clean exit
    via Ctrl-C). Add `--quit-keys`, `--keys`, `--tiny-text`, `--check-ctrl-c`,
-   `--check-color` for app-specific checks.
+   `--check-color`, `--check-resize` for app-specific checks.
 3. **Slop scan.** `$SKILL_DIR/scripts/lint-slop.sh PROJECT_DIR` must print
    `clean`.
 

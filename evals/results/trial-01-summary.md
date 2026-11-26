@@ -1,18 +1,17 @@
-# Eval 01 trial summary (partial)
+# Eval 01 trial summary
 
-## Trial: with skill, 1 run
+## Trial: with skill, 1 run (partial)
 
 - **Task**: Create a new Ratatui application (scrollable log viewer)
-- **Model**: beam-free (opencode)
-- **Duration**: ~180s (timed out before completion)
-- **Result**: Agent generated a full dirview-structured project (14 source files) but did not compile because `main.rs` retained `use dirview::App;` instead of renaming to the new crate name.
-- **Root cause**: Template copying pitfall (now documented in research-checklist.md).
-- **Compilation**: FAIL (unresolved import)
-- **Skill adherence**: Agent followed the skill's structure (action/keymap/state/ui/theme split) and included tests, but did not rename the crate reference.
-- **Key finding**: The skill's "copy structure" instruction needs to explicitly mention renaming the crate reference in main.rs. This has been added.
+- **Model**: beam-free (opencode, OpenRouter-backed)
+- **Duration**: 180s (timed out before completion)
+- **Result**: Agent generated partial code (action.rs, state.rs, keymap.rs, event.rs, lib.rs, Cargo.toml) following the skill's module structure (action/keymap/state/event split). Timed out before generating main.rs, app.rs, ui/, theme.rs.
+- **Compilation**: Not reached (incomplete)
+- **Skill adherence**: Agent followed the skill's structure guidance (separate action/keymap/state/event modules) and did not copy the dirview template verbatim.
+- **Key finding**: The 180s timeout is insufficient for a full app generation. The harness needs a longer timeout or the task should be scoped smaller.
 
 ## Limitations
 
-- Only 1 trial attempted; timed out.
+- Only 1 partial trial attempted.
 - No no-skill comparison run completed.
-- Results are preliminary and not statistically significant.
+- Results are preliminary.
