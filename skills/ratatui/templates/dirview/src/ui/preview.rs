@@ -36,7 +36,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &State, theme: &Theme) {
         Preview::Error(message) => {
             lines.push(Line::styled(sanitize(message).into_owned(), theme.error));
         }
-        Preview::Dir { names, total } => {
+        Preview::Dir { names, total, truncated } => {
             lines.extend(names.iter().map(|n| {
                 let style = if n.ends_with('/') {
                     theme.accent
@@ -45,11 +45,8 @@ pub fn render(frame: &mut Frame, area: Rect, state: &State, theme: &Theme) {
                 };
                 Line::styled(sanitize(n).into_owned(), style)
             }));
-            if *total > names.len() {
-                lines.push(Line::styled(
-                    format!("\u{2026} {} more", total - names.len()),
-                    theme.muted,
-                ));
+            if *truncated {
+                lines.push(Line::styled("\u{2026} more entries", theme.muted));
             }
         }
         Preview::Text {
@@ -68,7 +65,9 @@ pub fn render(frame: &mut Frame, area: Rect, state: &State, theme: &Theme) {
 
 fn meta(entry: &Entry, preview: &Preview) -> String {
     match (entry.kind, preview) {
-        (EntryKind::Dir, Preview::Dir { total, .. }) => format!("{total} items"),
+        (EntryKind::Dir, Preview::Dir { total, truncated, .. }) => {
+            if *truncated { format!("{}+ items", total - 1) } else { format!("{total} items") }
+        },
         (EntryKind::Dir, _) => "directory".to_owned(),
         (EntryKind::File, _) => {
             let modified = entry
