@@ -38,7 +38,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &State, theme: &Theme) {
         }
         Preview::Dir {
             names,
-            total,
+            total: _,
             truncated,
         } => {
             lines.extend(names.iter().map(|n| {
