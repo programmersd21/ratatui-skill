@@ -36,7 +36,7 @@ instead of loading skills.
   rows.
 - Colors by role, 16 ANSI by default, respect `NO_COLOR`, no forced background,
   no emoji.
-- Import crossterm through `ratatui::crossterm`; keep dependencies few.
+- If handling terminal events directly, declare a compatible direct `crossterm` dependency and import from `crossterm::event`. Verify `cargo tree -d` has no duplicate versions.
 - No `.unwrap()` outside tests, no swallowed errors, no TODOs, comments say why.
 
 ## Done means
