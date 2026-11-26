@@ -26,7 +26,6 @@ assert data["human_review"] == "required"
 assert data["model"] == "mock-model"
 assert data["provider"] == "mock-provider"
 assert data["model_settings"] == "deterministic-test"
-assert len(data["skill_hash"]) == 64
 PY
 
 MOCK_BEHAVIOR=python OPENCODE_BIN="$MOCK" bash "$ROOT/evals/harness/run-trial.sh" "$ROOT/evals/tasks/10-no-trigger.md" 1 "$TMP/no-trigger-skill" 10 >/dev/null
@@ -37,6 +36,7 @@ prompt = pathlib.Path(sys.argv[2]).read_text()
 assert data["skill_injected"] is True
 assert data["acceptance_pass"] == "true"
 assert data["skill_activated"] == "unverified"
+assert len(data["skill_hash"]) == 64
 assert data["expected_skill_trigger"] == "no"
 assert "Use the ratatui skill" not in prompt
 PY
