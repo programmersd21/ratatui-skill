@@ -22,7 +22,14 @@ bash evals/harness/run-suite.sh 1 600
 bash evals/harness/run-suite.sh 1 600 /tmp/ratatui-skill-evals
 ```
 
-The optional third argument selects an output directory outside the repository.
+The optional third argument selects an output directory outside the repository. Set model metadata explicitly so results remain identifiable:
+
+```bash
+EVAL_MODEL="your-model-id" EVAL_PROVIDER="your-provider" EVAL_MODEL_SETTINGS="temperature=0;reasoning=high" \
+  bash evals/harness/run-suite.sh 1 600
+```
+
+These are operator-supplied labels; the harness does not infer or verify provider-side settings. They are recorded in each trial's `result.json`, along with the repository commit and task-spec SHA-256.
 
 Run one paired task manually:
 

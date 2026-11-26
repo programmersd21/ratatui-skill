@@ -20,6 +20,7 @@ files = sorted(
     path
     for path in root.rglob("*.rs")
     if not excluded.intersection(path.relative_to(root).parts)
+    and "tests" not in path.relative_to(root).parts
 )
 rules = [
     (

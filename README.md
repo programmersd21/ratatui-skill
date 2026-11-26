@@ -56,7 +56,7 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
    mark them done, delete them, and save to a file so they're still there next time.
    ```
 
-3. Watch it research versions, write a brief, build, and run its own checks.
+3. Watch it inspect the project, choose a proportionate workflow, build, and run relevant checks.
 
 Assistants that read `AGENTS.md` instead of loading skills can use the one at the repo root. It carries the same process in short form and points at the skill files.
 
@@ -65,9 +65,9 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 | Without the skill | With it |
 |---|---|
 | Versions and APIs written from memory | Newest stable versions looked up and quoted, release notes read, uncertain calls compiled |
-| Design is whatever comes to mind first | A written brief: layout, one accent color, density, keys, every empty, error and too-small state |
+| Design choices are implicit | Layout and interactions follow the requirements and displayed data; document decisions when complexity warrants it |
 | Decorative panels, fake data, dead keys | Everything visible works |
-| One long `main.rs` | State with no terminal types, rendering with no side effects, one key table |
+| Structure chosen without considering scope | Clear state/rendering boundaries and shared key bindings where they reduce coupling or duplication |
 | "Done" with nothing run | Relevant fmt, Clippy and tests; render or terminal integration checks where behavior requires them; honest reporting |
 | Silent about what was skipped | A report that names anything it could not check |
 
@@ -77,8 +77,8 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 <summary><b>Five steps, in order</b></summary>
 
 1. **Research.** Look up the newest stable version, minimum Rust version, and (when given a manifest) the version resolved by the project of every crate, read the release notes, confirm widget crates match the ratatui version, and compile anything uncertain.
-2. **Design brief.** Before any code: layout archetype, one accent color, density, keys, and what each empty or failed state shows, justified from the app's data.
-3. **Build** from a tested template with a strict split: state with no terminal types, rendering with no side effects, and one key table that drives input, footer hints and help.
+2. **Design.** For a non-trivial new interface, make the interaction model, layout, keyboard behavior, and relevant empty/error states explicit before implementation. Keep this lightweight for small tasks.
+3. **Build** with the simplest architecture that fits. Use the dirview template as a reference when its structure is relevant; preserve existing project conventions.
 4. **Verify.** Run relevant formatting, Clippy and test checks. Use TestBackend for rendering behavior and PTY or recording-based tests when real terminal interaction matters. Report anything not checked.
 5. **Report honestly,** including anything it could not check.
 
@@ -88,10 +88,10 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 <summary><b>The rules it enforces</b></summary>
 
 - Everything visible works. No fake data, decorative panels or dead keys.
-- One key table drives input, footer hints and the `?` help, so a documented key always works.
+- When input, footer hints, and help repeat the same bindings, keep them in sync through a shared source of truth.
 - Text is measured with `unicode-width`, untrusted text is sanitized, only visible rows are drawn.
-- Colors by role in one file, 16 ANSI colors by default, `NO_COLOR` respected, no forced background, no emoji.
-- No `.unwrap()` outside tests, no swallowed errors, no TODOs, comments say why.
+- Choose colors and visual conventions for the product and terminal environment; support monochrome output when required.
+- Handle errors deliberately and use compiler-visible Clippy lints where a project wants to prohibit specific patterns.
 - Destructive actions confirm. Slow work never blocks the draw loop.
 
 </details>
@@ -109,7 +109,7 @@ cd todo
 TODO_THEME=catppuccin cargo run --bin todo
 ```
 
-The default uses the 16 ANSI colors from your terminal palette. `NO_COLOR` renders monochrome. Source, keys and the file format are in [`todo/README.md`](todo/README.md).
+The demo uses the terminal palette by default and supports `NO_COLOR` for monochrome output. Source, keys and the file format are in [`todo/README.md`](todo/README.md).
 
 ## What's inside
 

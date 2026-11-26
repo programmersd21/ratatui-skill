@@ -148,6 +148,8 @@ if [ "$TASK_LANG" = "rust" ]; then
   fi
 fi
 FILES_GENERATED=$(find "$PROJECT" -type f \( -name '*.rs' -o -name '*.py' \) ! -path '*/target/*' | wc -l | tr -d ' ')
+REPO_COMMIT=$(git -C "$REPO_ROOT" rev-parse HEAD)
+TASK_HASH=$(python3 -c "import hashlib, pathlib, sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())" "$TASK_FILE")
 
 # Run task-specific acceptance checks if available.
 ACCEPTANCE_SCRIPT="$REPO_ROOT/evals/acceptance/$(basename "$TASK_FILE" .md).sh"
@@ -163,12 +165,14 @@ if [ -x "$ACCEPTANCE_SCRIPT" ]; then
 fi
 
 # Write result using Python for valid JSON.
-python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$TASK_FIXTURE" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" <<'PY'
+python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$REPO_COMMIT" "$TASK_HASH" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$TASK_FIXTURE" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" <<'PY'
 import json, sys, os
-(trial_dir, task, with_skill, exit_status, timed_out, elapsed, skill_hash, injected,
+(trial_dir, task, with_skill, repository_commit, task_hash, exit_status, timed_out, elapsed, skill_hash, injected,
  activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, fixture, acceptance, details) = sys.argv[1:]
 result = {
     "task": os.path.basename(task),
+    "repository_commit": repository_commit,
+    "task_spec_sha256": task_hash,
     "with_skill": with_skill == "1",
     "exit_status": int(exit_status),
     "timed_out": timed_out == "true",
@@ -178,15 +182,18 @@ result = {
     "skill_activated": activated,
     "skill_leaked": leaked,
     "task_language": lang,
+    "model": os.environ.get("EVAL_MODEL", "not recorded"),
+    "provider": os.environ.get("EVAL_PROVIDER", "not recorded"),
+    "model_settings": os.environ.get("EVAL_MODEL_SETTINGS", "not recorded"),
     "task_fixture": fixture or None,
     "compile_ok": compile_ok == "true",
     "clippy_ok": clippy_ok == "true",
     "test_ok": test_ok == "true",
     "has_ratatui": has_ratatui == "true",
-    "files_generated": int(files),
+    "source_files_after_run": int(files),
     "acceptance_pass": acceptance,
     "acceptance_details": details,
-    "human_review": "required" if acceptance == "unverified" else "not recorded",
+    "human_review": "required",
 }
 with open(os.path.join(trial_dir, "result.json"), "w") as f:
     json.dump(result, f, indent=2)

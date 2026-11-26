@@ -15,7 +15,7 @@ fi
 
 metadata=""
 if [[ -n "$manifest" ]]; then
-  if ! metadata="$(cargo metadata --format-version 1 --manifest-path "$manifest" 2>&1)"; then
+  if ! metadata="$(cargo metadata --format-version 1 --manifest-path "$manifest")"; then
     printf 'cargo metadata failed for %s:\n%s\n' "$manifest" "$metadata" >&2
     exit 1
   fi

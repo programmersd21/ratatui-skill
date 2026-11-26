@@ -36,6 +36,16 @@ class LintSlopTests(unittest.TestCase):
             result = self.run_scanner(root)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_nested_test_target_is_not_treated_as_production_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary) / "project"
+            (root / "tests").mkdir(parents=True)
+            (root / "src").mkdir()
+            (root / "tests" / "render.rs").write_text("let color = Color::Rgb(1, 2, 3);\\n")
+            (root / "src" / "main.rs").write_text("fn main() {}\\n")
+            result = self.run_scanner(root)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_test_module_cannot_hide_later_production_source(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = pathlib.Path(temporary) / "project"
