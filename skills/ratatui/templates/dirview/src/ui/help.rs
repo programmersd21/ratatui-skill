@@ -13,7 +13,7 @@ use crate::theme::Theme;
 const KEY_COLUMN: usize = 16;
 const MAX_WIDTH: u16 = 58;
 
-pub fn render(frame: &mut Frame, area: Rect, theme: &Theme) {
+pub fn render(frame: &mut Frame, area: Rect, theme: &Theme, offset: usize) {
     let mut lines = vec![Line::styled("Browse", theme.title)];
     lines.extend(keymap::bindings(Mode::Normal).iter().map(|b| row(b, theme)));
     lines.push(Line::raw(""));
@@ -32,7 +32,14 @@ pub fn render(frame: &mut Frame, area: Rect, theme: &Theme) {
         block = block.title_bottom(Line::styled(close, theme.muted));
     }
     frame.render_widget(Clear, popup);
-    frame.render_widget(Paragraph::new(lines).block(block), popup);
+    let max_offset = lines.len().saturating_sub(popup.height.saturating_sub(2) as usize);
+    let offset = offset.min(max_offset);
+    frame.render_widget(
+        Paragraph::new(lines)
+            .scroll((u16::try_from(offset).unwrap_or(u16::MAX), 0))
+            .block(block),
+        popup,
+    );
 }
 
 fn row(binding: &Binding, theme: &Theme) -> Line<'static> {
