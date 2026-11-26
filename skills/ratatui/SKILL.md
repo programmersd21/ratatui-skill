@@ -31,8 +31,10 @@ unless the bug lacks coverage. Do not restructure.
 ## 1. Research (before any code)
 
 Run `$SKILL_DIR/scripts/crate-versions.sh ratatui color-eyre unicode-width` plus
-every other crate you plan to use. Quote what it returns. Set `rust-version` in
-Cargo.toml to the highest MSRV among your dependencies.
+every other crate you plan to use. For an existing project, pass
+`--manifest PATH/TO/Cargo.toml` to report the resolved project version beside
+the latest release. Quote the output. Set `rust-version` in Cargo.toml to the
+highest MSRV among your dependencies.
 
 - Check `cargo --version` against each dependency's MSRV. Fix before continuing.
 - Read the ratatui CHANGELOG and BREAKING-CHANGES for your version.
