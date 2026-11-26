@@ -1,33 +1,64 @@
-# Evaluation suite for ratatui-skill
+# Evaluation suite
 
-Measures whether the skill improves agent output. Each task is a self-contained
-specification with acceptance criteria that can be checked by compilation, tests,
-and PTY interaction.
+This suite is intended to measure whether the Ratatui skill improves agent results. It is not proof of effectiveness until comparable trials have been completed and graded.
 
-## Structure
+## Current status
 
-- `tasks/` - one Markdown file per evaluation task
-- `harness/` - scripts to run trials and collect results
+- Ten task specifications exist in `tasks/`.
+- Existing-project tasks use explicit fixtures staged into isolated trial workspaces.
+- Each trial records the skill content hash, task, condition, process exit status, elapsed time, language checks, and acceptance status.
+- Only tasks with an acceptance script receive automated acceptance.
+- Tasks without an automated acceptance script remain **ungraded** until a reviewer evaluates their stated criteria.
+- Committed results are preliminary. They do not establish that the skill improves Rust task outcomes.
+
+See `results/summary.md` for actual evidence and limitations.
+
+## Run
+
+The harness expects OpenCode and its configured model provider:
+
+```bash
+bash evals/harness/run-suite.sh 1 600
+bash evals/harness/run-suite.sh 1 600 /tmp/ratatui-skill-evals
+```
+
+The optional third argument selects an output directory outside the repository.
+
+Run one paired task manually:
+
+```bash
+bash evals/harness/run-trial.sh evals/tasks/02-add-widget.md 1 /tmp/widget-skill 600
+bash evals/harness/run-trial.sh evals/tasks/02-add-widget.md 0 /tmp/widget-base 600
+```
+
+A trial directory contains the prompt, generated project, stdout, stderr, and `result.json`. Preserve these artifacts.
 
 ## Method
 
-1. For each task, run N trials with the skill enabled and N without.
-2. Same task spec, same environment, same model.
-3. Capture: generated code, compile result, test result, PTY output, token count.
-4. Score each trial against the task's acceptance criteria.
-5. Report: pass rate, failure modes, token overhead, workflow adherence.
+1. Keep model, model version, provider, settings, task text, permissions, environment, and fixture commit consistent across conditions.
+2. Isolate workspaces. Do not expose the skill or repository instructions to baseline runs.
+3. Randomize execution order where practical.
+4. Run multiple trials because model output is nondeterministic. Three paired trials per task is an initial floor, not proof of statistical power.
+5. Use deterministic checks for objective behavior where practical.
+6. Have a human assess architecture, maintainability, usability, and visual quality using the rubric.
+7. Inspect trajectories as well as final artifacts: repository inspection, API research, unnecessary edits, recovery, verification, and skill activation.
+8. Report failed, timed-out, incomplete, and ungraded trials. Explain any exclusions from denominators.
 
-## Status
+## Metrics
 
-All 10 tasks are **proposed**. Harness v2 is implemented with:
-- Real skill injection (copy to isolated opencode config, verify presence)
-- Honest exit status (no `|| true` suppression)
-- Timeout classification (exit 124 = timeout)
-- Separate stdout/stderr logs
-- Skill content hash (not git HEAD)
-- Language-aware (Rust vs Python)
-- Configurable timeout
+Report by task and condition: completion and timeout rate; build, Clippy, and test success; automated acceptance; human scores; API/version correctness; terminal interaction and resize behavior; unnecessary complexity; token usage, latency, and cost when reliable provider measurements are available; and activation precision including negative cases.
 
-Two partial trials have been run. Results in `evals/results/`.
-Full trials require ~10 min each with a real model. Results will be
-added to `evals/results/` once executed.
+Keep objective checks and human judgments separate. Do not collapse all dimensions into one score without showing the underlying results.
+
+## Structure
+
+- `tasks/`: task specifications.
+- `fixtures/`: starting projects for existing-project and compatibility tasks.
+- `acceptance/`: deterministic checks.
+- `harness/`: isolated trial execution and regression tests.
+- `scoring-rubric.md`: human review criteria.
+- `results/`: raw artifacts and honest summaries.
+
+## Limitations
+
+The harness currently supports OpenCode. Other agent integrations need separate implementation and validation. A successful process exit is not equivalent to a successful task. Trials without automated acceptance are ungraded and require human review.

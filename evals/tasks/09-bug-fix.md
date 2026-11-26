@@ -3,6 +3,7 @@
 ## Context
 
 language: rust
+fixture: dirview
 
 The dirview template has a bug: when filtering, the selected entry jumps to
 index 0 instead of staying on the current entry. Fix it.

@@ -59,7 +59,7 @@ if [ "$WITH_SKILL" = "1" ]; then
     echo "skill injection failed: SKILL.md not found" >&2
     exit 2
   fi
-  PROMPT="Use the ratatui skill. $TASK"
+  PROMPT="$TASK"
 else
   # Ensure no skill leaks into baseline.
   rm -rf "$CONFIG_DIR/skills"
@@ -72,9 +72,12 @@ printf '%s\n' "$PROMPT" > "$TRIAL_DIR/prompt.txt"
 TASK_LANG=$(grep -m1 '^language:' "$TASK_FILE" 2>/dev/null | sed 's/^language: *//' | tr -d ' ' || true)
 [ -n "$TASK_LANG" ] || TASK_LANG="rust"
 
-# Set up project based on language.
-if [ "$TASK_LANG" = "rust" ]; then
-  cat > "$PROJECT/Cargo.toml" <<'TOML'
+TASK_FIXTURE=$(grep -m1 '^fixture:' "$TASK_FILE" 2>/dev/null | sed 's/^fixture: *//' | tr -d ' ' || true)
+
+case "$TASK_FIXTURE" in
+  "")
+    if [ "$TASK_LANG" = "rust" ]; then
+      cat > "$PROJECT/Cargo.toml" <<'TOML'
 [package]
 name = "eval-app"
 version = "0.1.0"
@@ -82,10 +85,22 @@ edition = "2024"
 
 [dependencies]
 TOML
-else
-  # Python task: no Cargo project.
-  :
-fi
+    fi
+    ;;
+  dirview)
+    cp -a "$REPO_ROOT/skills/ratatui/templates/dirview/." "$PROJECT/"
+    ;;
+  todo)
+    cp -a "$REPO_ROOT/todo/." "$PROJECT/"
+    ;;
+  ratatui-028)
+    cp -a "$REPO_ROOT/evals/fixtures/ratatui-028/." "$PROJECT/"
+    ;;
+  *)
+    printf 'unknown fixture: %s\n' "$TASK_FIXTURE" >&2
+    exit 2
+    ;;
+esac
 
 # Run opencode FROM the project directory (critical fix).
 START_TIME=$(date +%s)
@@ -148,10 +163,10 @@ if [ -x "$ACCEPTANCE_SCRIPT" ]; then
 fi
 
 # Write result using Python for valid JSON.
-python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" <<'PY'
+python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$TASK_FIXTURE" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" <<'PY'
 import json, sys, os
 (trial_dir, task, with_skill, exit_status, timed_out, elapsed, skill_hash, injected,
- activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, acceptance, details) = sys.argv[1:]
+ activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, fixture, acceptance, details) = sys.argv[1:]
 result = {
     "task": os.path.basename(task),
     "with_skill": with_skill == "1",
@@ -163,6 +178,7 @@ result = {
     "skill_activated": activated,
     "skill_leaked": leaked,
     "task_language": lang,
+    "task_fixture": fixture or None,
     "compile_ok": compile_ok == "true",
     "clippy_ok": clippy_ok == "true",
     "test_ok": test_ok == "true",
@@ -170,6 +186,7 @@ result = {
     "files_generated": int(files),
     "acceptance_pass": acceptance,
     "acceptance_details": details,
+    "human_review": "required" if acceptance == "unverified" else "not recorded",
 }
 with open(os.path.join(trial_dir, "result.json"), "w") as f:
     json.dump(result, f, indent=2)

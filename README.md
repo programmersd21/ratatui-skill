@@ -68,7 +68,7 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 | Design is whatever comes to mind first | A written brief: layout, one accent color, density, keys, every empty, error and too-small state |
 | Decorative panels, fake data, dead keys | Everything visible works |
 | One long `main.rs` | State with no terminal types, rendering with no side effects, one key table |
-| "Done" with nothing run | fmt, clippy, tests, screen dumps, a real pseudo-terminal run, and a slop scan |
+| "Done" with nothing run | Relevant fmt, Clippy and tests; render or terminal integration checks where behavior requires them; honest reporting |
 | Silent about what was skipped | A report that names anything it could not check |
 
 ## How it works
@@ -79,7 +79,7 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 1. **Research.** Look up the newest stable version, minimum Rust version, and (when given a manifest) the version resolved by the project of every crate, read the release notes, confirm widget crates match the ratatui version, and compile anything uncertain.
 2. **Design brief.** Before any code: layout archetype, one accent color, density, keys, and what each empty or failed state shows, justified from the app's data.
 3. **Build** from a tested template with a strict split: state with no terminal types, rendering with no side effects, and one key table that drives input, footer hints and help.
-4. **Verify.** `cargo fmt --check`, clippy with warnings denied, tests, text dumps of the screen at several sizes, a run in a real pseudo-terminal, and a slop scan.
+4. **Verify.** Run relevant formatting, Clippy and test checks. Use TestBackend for rendering behavior and PTY or recording-based tests when real terminal interaction matters. Report anything not checked.
 5. **Report honestly,** including anything it could not check.
 
 </details>
