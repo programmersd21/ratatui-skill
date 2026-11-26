@@ -3,15 +3,16 @@
 set -uo pipefail
 PROJECT="${1:?project dir required}"
 FAIL=0
-check() { if eval "$2"; then echo "PASS: $1"; else echo "FAIL: $1"; FAIL=$((FAIL+1)); fi; }
+check() { shift
+  if "$@"; then echo "PASS: $1"; else echo "FAIL: $1"; FAIL=$((FAIL+1)); fi; }
 
-check "compiles" "cargo build --manifest-path '$PROJECT/Cargo.toml' >/dev/null 2>&1"
-check "clippy clean" "cargo clippy --manifest-path '$PROJECT/Cargo.toml' -- -D warnings >/dev/null 2>&1"
-check "has tests" "cargo test --manifest-path '$PROJECT/Cargo.toml' >/dev/null 2>&1"
-check "uses ratatui" "grep -q ratatui '$PROJECT/Cargo.toml'"
-check "has main.rs" "test -f '$PROJECT/src/main.rs'"
-check "has state module" "test -f '$PROJECT/src/state.rs'"
-check "has ui module" "test -d '$PROJECT/src/ui' -o -f '$PROJECT/src/ui.rs'"
-check "no unwrap in non-test" "! grep -rn '\\.unwrap()' '$PROJECT/src' --include='*.rs' | grep -v '#\\[cfg(test)\\]' | grep -v 'tests/' | grep -q ."
+check "compiles" cargo build --manifest-path "$PROJECT/Cargo.toml"
+check "clippy clean" cargo clippy --manifest-path "$PROJECT/Cargo.toml" -- -D warnings
+check "has tests" cargo test --manifest-path "$PROJECT/Cargo.toml"
+check "uses ratatui" grep -q ratatui "$PROJECT/Cargo.toml"
+check "has main.rs" test -f "$PROJECT/src/main.rs"
+check "has state module" test -f "$PROJECT/src/state.rs"
+if [[ -d "$PROJECT/src/ui" || -f "$PROJECT/src/ui.rs" ]]; then echo "PASS: has ui module"; else echo "FAIL: has ui module"; FAIL=$((FAIL+1)); fi
+if ! grep -rn \.unwrap "$PROJECT/src" --include='*.rs' --exclude-dir=tests | grep -qv '#\[cfg(test)\]'; then echo "PASS: no unwrap in non-test"; else echo "FAIL: no unwrap in non-test"; FAIL=$((FAIL+1)); fi
 
 exit "$FAIL"

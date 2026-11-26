@@ -5,33 +5,39 @@
 #
 # Sets up an isolated workspace, runs the agent, captures all output,
 # and writes a structured result.json with honest exit status.
-set -uo pipefail
+set -Eeuo pipefail
+umask 077
 
 TASK_FILE="${1:?task file required}"
 WITH_SKILL="${2:?0 or 1}"
 TRIAL_DIR="${3:?trial dir required}"
 TIMEOUT="${4:-300}"
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd -P)"
+[[ "$WITH_SKILL" == 0 || "$WITH_SKILL" == 1 ]] || { echo "WITH_SKILL must be 0 or 1" >&2; exit 2; }
+[[ "$TIMEOUT" =~ ^[1-9][0-9]*$ ]] || { echo "TIMEOUT must be a positive integer" >&2; exit 2; }
+TASK_FILE="$(cd "$(dirname "$TASK_FILE")" && pwd -P)/$(basename "$TASK_FILE")"
+[[ -f "$TASK_FILE" ]] || { echo "task file not found" >&2; exit 2; }
 mkdir -p "$TRIAL_DIR"
-TRIAL_DIR="$(cd "$TRIAL_DIR" && pwd)"
-if [[ "$TRIAL_DIR" != "$REPO_ROOT"* ]]; then
-  echo "TRIAL_DIR must be under repo root for opencode sandbox" >&2
-  exit 2
-fi
+TRIAL_DIR="$(cd "$TRIAL_DIR" && pwd -P)"
+case "$TRIAL_DIR/" in "$REPO_ROOT/"*) echo "TRIAL_DIR must be outside the repository to prevent AGENTS.md leakage" >&2; exit 2 ;; esac
 
 TASK=$(cat "$TASK_FILE")
 PROJECT="$TRIAL_DIR/project"
 mkdir -p "$PROJECT"
 
 # Isolated opencode config per trial (never touch user's real config).
-CONFIG_DIR="$TRIAL_DIR/opencode-config"
+SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/ratatui-skill-trial.XXXXXX")"
+CONFIG_DIR="$SCRATCH/opencode-config"
 mkdir -p "$CONFIG_DIR"
+chmod 700 "$SCRATCH" "$CONFIG_DIR"
+cleanup() { rm -rf "$SCRATCH"; }
+trap cleanup EXIT INT TERM
 if [ -f "$HOME/.config/opencode/auth.json" ]; then
-  cp "$HOME/.config/opencode/auth.json" "$CONFIG_DIR/auth.json"
+  install -m 600 "$HOME/.config/opencode/auth.json" "$CONFIG_DIR/auth.json"
 fi
 if [ -f "$HOME/.config/opencode/opencode.json" ]; then
-  cp "$HOME/.config/opencode/opencode.json" "$CONFIG_DIR/opencode.json"
+  install -m 600 "$HOME/.config/opencode/opencode.json" "$CONFIG_DIR/opencode.json"
 fi
 
 # Skill injection: copy skill only for skill-enabled trials.
@@ -124,19 +130,18 @@ if [ "$TASK_LANG" = "rust" ]; then
     HAS_RATATUI=true
   fi
 fi
-FILES_GENERATED=$(find "$PROJECT" -name '*.rs' -o -name '*.py' | grep -v target | wc -l)
+FILES_GENERATED=$(find "$PROJECT" -type f \\( -name '*.rs' -o -name '*.py' \\) ! -path '*/target/*' | wc -l | tr -d ' ')
 
 # Run task-specific acceptance checks if available.
 ACCEPTANCE_SCRIPT="$REPO_ROOT/evals/acceptance/$(basename "$TASK_FILE" .md).sh"
 ACCEPTANCE_PASS="unverified"
 ACCEPTANCE_DETAILS=""
 if [ -x "$ACCEPTANCE_SCRIPT" ]; then
-  ACCEPTANCE_OUTPUT=$("$ACCEPTANCE_SCRIPT" "$PROJECT" 2>&1) || true
-  if echo "$ACCEPTANCE_OUTPUT" | grep -q "FAIL:"; then
-    ACCEPTANCE_PASS="false"
-  else
-    ACCEPTANCE_PASS="true"
-  fi
+  set +e
+  ACCEPTANCE_OUTPUT=$("$ACCEPTANCE_SCRIPT" "$PROJECT" 2>&1)
+  ACCEPTANCE_STATUS=$?
+  set -e
+  if [ "$ACCEPTANCE_STATUS" -eq 0 ]; then ACCEPTANCE_PASS="true"; else ACCEPTANCE_PASS="false"; fi
   ACCEPTANCE_DETAILS=$(echo "$ACCEPTANCE_OUTPUT" | tr '\n' ' ')
 fi
 
@@ -167,7 +172,9 @@ result = {
 with open(os.path.join(trial_dir, "result.json"), "w") as f:
     json.dump(result, f, indent=2)
 print(json.dumps(result, indent=2))
-# Exit nonzero if the trial failed its acceptance checks.
-if acceptance == "false":
-    sys.exit(1)
+# A trial is successful only when the agent, required language checks, and acceptance checks pass.
+failed = int(exit_status) != 0 or timed_out == "true" or acceptance == "false"
+if lang == "rust" and (compile_ok != "true" or clippy_ok != "true" or test_ok != "true"):
+    failed = True
+sys.exit(1 if failed else 0)
 PY
