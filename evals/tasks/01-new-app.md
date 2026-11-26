@@ -2,6 +2,8 @@
 
 ## Task
 
+language: rust
+
 Build a Rust TUI that displays a scrollable list of log entries. Each entry has
 a timestamp, level (info/warn/error), and message. The user can filter by level
 with number keys 1-3, scroll with j/k, and quit with q.

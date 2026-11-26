@@ -1,0 +1,18 @@
+Use the ratatui skill. # Eval 06: Handle terminal resizing
+
+## Task
+
+language: rust
+
+Build a TUI with a two-column layout (list + detail) that gracefully degrades
+to single-column below 80 columns and shows "terminal too small" below 40x8.
+
+## Acceptance criteria
+
+- No panic on resize from 200x60 to 1x1
+- Layout switches at 80 columns
+- Too-small message shows required and actual dimensions
+- Content is not lost on resize (selection preserved)
+- Tested at (1,1), (39,7), (40,8), (79,24), (80,24), (200,60)
+
+## Should trigger skill: yes

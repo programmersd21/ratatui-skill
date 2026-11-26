@@ -1,0 +1,19 @@
+{
+  "task": "10-no-trigger.md",
+  "with_skill": false,
+  "exit_status": 0,
+  "timed_out": false,
+  "elapsed_seconds": 0,
+  "skill_hash": "none",
+  "skill_injected": false,
+  "skill_activated": "unverified",
+  "skill_leaked": "unverified",
+  "task_language": "python",
+  "compile_ok": false,
+  "clippy_ok": false,
+  "test_ok": false,
+  "has_ratatui": false,
+  "files_generated": 1,
+  "acceptance_pass": "false",
+  "acceptance_details": "PASS: no ratatui dependency PASS: no rust files with ratatui FAIL: python files exist "
+}

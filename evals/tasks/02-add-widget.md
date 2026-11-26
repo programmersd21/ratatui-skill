@@ -2,6 +2,8 @@
 
 ## Context
 
+language: rust
+
 Given the dirview template, add a status bar at the bottom showing the current
 directory's total size and file count.
 

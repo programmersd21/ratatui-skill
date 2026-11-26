@@ -2,6 +2,8 @@
 
 ## Task
 
+language: rust
+
 Build a TUI with a nested menu: top-level categories, each containing items.
 Navigate with arrows, enter to drill in, backspace to go up, tab to switch focus
 between sidebar and main panel.

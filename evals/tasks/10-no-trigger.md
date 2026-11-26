@@ -2,6 +2,8 @@
 
 ## Task
 
+language: python
+
 Write a Python script that reads a CSV file and prints summary statistics
 (mean, median, std) for each numeric column.
 

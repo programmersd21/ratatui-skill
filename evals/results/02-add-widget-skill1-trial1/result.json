@@ -1,0 +1,19 @@
+{
+  "task": "02-add-widget.md",
+  "with_skill": true,
+  "exit_status": 0,
+  "timed_out": false,
+  "elapsed_seconds": 0,
+  "skill_hash": "8aa792d9c98ff477f857e3bd0bfdc468fd2b8155c857587ceba26dbf3aa44f56",
+  "skill_injected": true,
+  "skill_activated": "unverified",
+  "skill_leaked": "unverified",
+  "task_language": "rust",
+  "compile_ok": false,
+  "clippy_ok": false,
+  "test_ok": false,
+  "has_ratatui": false,
+  "files_generated": 2,
+  "acceptance_pass": "unverified",
+  "acceptance_details": ""
+}

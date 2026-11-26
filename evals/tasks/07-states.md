@@ -2,6 +2,8 @@
 
 ## Task
 
+language: rust
+
 Build a TUI that reads a file path from argv and displays its contents. Handle:
 file not found, permission denied, empty file, binary file, very large file.
 

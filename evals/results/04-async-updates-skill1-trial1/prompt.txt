@@ -1,0 +1,18 @@
+Use the ratatui skill. # Eval 04: Implement asynchronous data updates
+
+## Task
+
+language: rust
+
+Build a TUI that polls a (mock) HTTP endpoint every 5 seconds and displays the
+result. The UI must never freeze during polling.
+
+## Acceptance criteria
+
+- Uses a background thread or async task, not blocking the draw loop
+- Shows a "loading" state while fetching
+- Shows the last successful result on error (stale data + error message)
+- Handles Ctrl-C cleanly while a fetch is in progress
+- No `std::thread::sleep` in the main loop
+
+## Should trigger skill: yes

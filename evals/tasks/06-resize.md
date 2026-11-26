@@ -2,6 +2,8 @@
 
 ## Task
 
+language: rust
+
 Build a TUI with a two-column layout (list + detail) that gracefully degrades
 to single-column below 80 columns and shows "terminal too small" below 40x8.
 

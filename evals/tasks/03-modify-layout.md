@@ -2,6 +2,8 @@
 
 ## Context
 
+language: rust
+
 Given the todo app, add a sidebar showing completed vs pending counts and a
 progress bar. The main list keeps its current behavior.
 

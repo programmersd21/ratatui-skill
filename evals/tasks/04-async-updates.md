@@ -2,6 +2,8 @@
 
 ## Task
 
+language: rust
+
 Build a TUI that polls a (mock) HTTP endpoint every 5 seconds and displays the
 result. The UI must never freeze during polling.
 

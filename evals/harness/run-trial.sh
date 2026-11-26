@@ -37,8 +37,8 @@ fi
 # Skill injection: copy skill only for skill-enabled trials.
 SKILL_HASH="none"
 SKILL_INJECTED=false
-SKILL_ACTIVATED=false
-SKILL_LEAKED=false
+SKILL_ACTIVATED="unverified"
+SKILL_LEAKED="unverified"
 
 if [ "$WITH_SKILL" = "1" ]; then
   SKILL_SRC="$REPO_ROOT/skills/ratatui"
@@ -47,7 +47,7 @@ if [ "$WITH_SKILL" = "1" ]; then
   rm -rf "$SKILL_DST"
   cp -r "$SKILL_SRC" "$SKILL_DST"
   # Hash actual skill contents (not git HEAD).
-  SKILL_HASH=$(find "$SKILL_SRC" -type f -exec sha256sum {} \; | sort | sha256sum | cut -d' ' -f1)
+  SKILL_HASH=$(python3 -c "import hashlib, pathlib, sys; h=hashlib.sha256(); [h.update(p.read_bytes()) for p in sorted(pathlib.Path(sys.argv[1]).rglob('*')) if p.is_file()]; print(h.hexdigest())" "$SKILL_SRC")
   SKILL_INJECTED=true
   if [ ! -f "$SKILL_DST/SKILL.md" ]; then
     echo "skill injection failed: SKILL.md not found" >&2
@@ -62,11 +62,9 @@ fi
 
 printf '%s\n' "$PROMPT" > "$TRIAL_DIR/prompt.txt"
 
-# Determine task language from task file (default: rust).
-TASK_LANG="rust"
-if grep -qi "python" "$TASK_FILE"; then
-  TASK_LANG="python"
-fi
+# Determine task language from explicit metadata in the task file.
+TASK_LANG=$(grep -m1 '^language:' "$TASK_FILE" 2>/dev/null | sed 's/^language: *//' | tr -d ' ' || true)
+[ -n "$TASK_LANG" ] || TASK_LANG="rust"
 
 # Set up project based on language.
 if [ "$TASK_LANG" = "rust" ]; then
@@ -87,7 +85,7 @@ fi
 START_TIME=$(date +%s)
 (
   cd "$PROJECT"
-  OPENCODE_CONFIG_DIR="$CONFIG_DIR" timeout "$TIMEOUT" opencode run "$(cat "$TRIAL_DIR/prompt.txt")" \
+  OPENCODE_CONFIG_DIR="$CONFIG_DIR" timeout "$TIMEOUT" "${OPENCODE_BIN:-opencode}" run "$(cat "$TRIAL_DIR/prompt.txt")" \
     > "$TRIAL_DIR/stdout.txt" 2> "$TRIAL_DIR/stderr.txt"
 )
 EXIT_STATUS=$?
@@ -99,18 +97,11 @@ if [ "$EXIT_STATUS" = "124" ]; then
   TIMED_OUT=true
 fi
 
-# Check skill activation (skill-enabled only).
-if [ "$WITH_SKILL" = "1" ]; then
-  if grep -qi 'ratatui skill\|crate-versions\|SKILL.md' "$TRIAL_DIR/stdout.txt" 2>/dev/null; then
-    SKILL_ACTIVATED=true
-  fi
-fi
-# Check skill leakage in baseline.
-if [ "$WITH_SKILL" = "0" ]; then
-  if grep -qi 'ratatui skill\|crate-versions.sh' "$TRIAL_DIR/stdout.txt" 2>/dev/null; then
-    SKILL_LEAKED=true
-  fi
-fi
+# Skill activation cannot be verified from output text alone.
+# Report as unverified; a future harness version can check agent tool calls.
+SKILL_ACTIVATED="unverified"
+# Skill leakage cannot be verified from output text alone.
+SKILL_LEAKED="unverified"
 
 # Collect results based on language.
 COMPILE_OK=false
@@ -135,11 +126,25 @@ if [ "$TASK_LANG" = "rust" ]; then
 fi
 FILES_GENERATED=$(find "$PROJECT" -name '*.rs' -o -name '*.py' | grep -v target | wc -l)
 
+# Run task-specific acceptance checks if available.
+ACCEPTANCE_SCRIPT="$REPO_ROOT/evals/acceptance/$(basename "$TASK_FILE" .md).sh"
+ACCEPTANCE_PASS="unverified"
+ACCEPTANCE_DETAILS=""
+if [ -x "$ACCEPTANCE_SCRIPT" ]; then
+  ACCEPTANCE_OUTPUT=$("$ACCEPTANCE_SCRIPT" "$PROJECT" 2>&1) || true
+  if echo "$ACCEPTANCE_OUTPUT" | grep -q "FAIL:"; then
+    ACCEPTANCE_PASS="false"
+  else
+    ACCEPTANCE_PASS="true"
+  fi
+  ACCEPTANCE_DETAILS=$(echo "$ACCEPTANCE_OUTPUT" | tr '\n' ' ')
+fi
+
 # Write result using Python for valid JSON.
-python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" <<'PY'
+python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" <<'PY'
 import json, sys, os
 (trial_dir, task, with_skill, exit_status, timed_out, elapsed, skill_hash, injected,
- activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang) = sys.argv[1:]
+ activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, acceptance, details) = sys.argv[1:]
 result = {
     "task": os.path.basename(task),
     "with_skill": with_skill == "1",
@@ -148,16 +153,21 @@ result = {
     "elapsed_seconds": int(elapsed),
     "skill_hash": skill_hash,
     "skill_injected": injected == "true",
-    "skill_activated": activated == "true",
-    "skill_leaked": leaked == "true",
+    "skill_activated": activated,
+    "skill_leaked": leaked,
     "task_language": lang,
     "compile_ok": compile_ok == "true",
     "clippy_ok": clippy_ok == "true",
     "test_ok": test_ok == "true",
     "has_ratatui": has_ratatui == "true",
     "files_generated": int(files),
+    "acceptance_pass": acceptance,
+    "acceptance_details": details,
 }
 with open(os.path.join(trial_dir, "result.json"), "w") as f:
     json.dump(result, f, indent=2)
 print(json.dumps(result, indent=2))
+# Exit nonzero if the trial failed its acceptance checks.
+if acceptance == "false":
+    sys.exit(1)
 PY

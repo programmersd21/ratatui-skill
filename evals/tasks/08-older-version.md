@@ -2,6 +2,8 @@
 
 ## Context
 
+language: rust
+
 Given a project using ratatui 0.28.0, add a new widget without upgrading
 ratatui. The project's Cargo.toml pins `ratatui = "0.28"`.
 
