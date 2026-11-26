@@ -3,10 +3,14 @@
 set -uo pipefail
 PROJECT="${1:?project dir required}"
 FAIL=0
-check() { if eval "$2"; then echo "PASS: $1"; else echo "FAIL: $1"; FAIL=$((FAIL+1)); fi; }
+check() {
+  local label="$1"
+  shift
+  if "$@"; then echo "PASS: $label"; else echo "FAIL: $label"; FAIL=$((FAIL+1)); fi
+}
 
-check "no ratatui dependency" "! grep -qi ratatui '$PROJECT/Cargo.toml' 2>/dev/null"
-check "no rust files with ratatui" "! grep -rl ratatui '$PROJECT' --include='*.rs' 2>/dev/null | grep -q ."
-check "python files exist" "find '$PROJECT' -name '*.py' | grep -q ."
+if [[ ! -f "$PROJECT/Cargo.toml" ]] || ! grep -qi ratatui "$PROJECT/Cargo.toml"; then echo "PASS: no ratatui dependency"; else echo "FAIL: no ratatui dependency"; FAIL=$((FAIL+1)); fi
+if ! grep -rl ratatui "$PROJECT" --include='*.rs' 2>/dev/null | grep -q .; then echo "PASS: no rust files with ratatui"; else echo "FAIL: no rust files with ratatui"; FAIL=$((FAIL+1)); fi
+check "python files exist" find "$PROJECT" -name '*.py' -print -quit | grep -q .
 
 exit "$FAIL"

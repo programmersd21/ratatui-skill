@@ -4,13 +4,17 @@
 # usage: run-suite.sh [TRIALS_PER_CONDITION] [TIMEOUT]
 #
 # Exit status: 0 if all required checks pass, 1 otherwise.
-set -uo pipefail
+set -Eeuo pipefail
 
 TRIALS="${1:-1}"
 TIMEOUT="${2:-300}"
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-RESULTS="$REPO_ROOT/evals/results"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd -P)"
+RESULTS="${3:-${TMPDIR:-/tmp}/ratatui-skill-evals-$(date +%Y%m%d-%H%M%S)}"
+[[ "$TRIALS" =~ ^[1-9][0-9]*$ ]] || { echo "TRIALS must be a positive integer" >&2; exit 2; }
+[[ "$TIMEOUT" =~ ^[1-9][0-9]*$ ]] || { echo "TIMEOUT must be a positive integer" >&2; exit 2; }
 mkdir -p "$RESULTS"
+RESULTS="$(cd "$RESULTS" && pwd -P)"
+case "$RESULTS/" in "$REPO_ROOT/"*) echo "results must be outside the repository" >&2; exit 2 ;; esac
 
 echo "Running $TRIALS trial(s) per task per condition, timeout=${TIMEOUT}s"
 
