@@ -45,12 +45,16 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
 
 1. Copy the canonical skill directory into a discovery location supported by your agent. From the directory containing this repository:
 
+   **Codex, Cursor, Antigravity, and OpenCode:**
+
    ```bash
-   # Codex, Cursor, Antigravity, and OpenCode
    mkdir -p /path/to/project/.agents/skills
    cp -a skills/ratatui /path/to/project/.agents/skills/ratatui
+   ```
 
-   # Claude Code
+   **Claude Code:**
+
+   ```bash
    mkdir -p /path/to/project/.claude/skills
    cp -a skills/ratatui /path/to/project/.claude/skills/ratatui
    ```
@@ -171,11 +175,12 @@ cargo run -- .
 <summary><b>Does it only work with Claude Code?</b></summary>
 <br>
 
-**No. Any assistant that can run commands works.**
+**No. The skill uses the open Agent Skills directory format.**
 
-The skill format is read by assistants that support skills, and anything that
-reads `AGENTS.md` can use the short version at the repo root. The scripts and
-template are plain shell, Python and Rust.
+Codex, Claude Code, Cursor, Antigravity, and OpenCode document compatible
+skill discovery paths. Use the install location listed in
+[`docs/agent-compatibility.md`](docs/agent-compatibility.md). The repository
+has not yet been runtime-smoke-tested in every listed client.
 
 </details>
 

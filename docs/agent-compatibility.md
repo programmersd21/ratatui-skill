@@ -30,7 +30,7 @@ OpenCode additionally accepts global compatibility directories `~/.agents/skills
 
 ## Install from this repository
 
-Run these commands from the directory containing the cloned `ratatui-skill` repository. Replace `/path/to/project` with the project where you want the skill available.
+Run these commands from the root of the cloned `ratatui-skill` repository. Replace `/path/to/project` with the root of the project where you want the skill available.
 
 ### Shared location
 
@@ -80,7 +80,7 @@ The skill's portable content is shared. Product-specific features, invocation co
 
 ## Official documentation
 
-- [OpenAI Codex skills](https://developers.openai.com/codex/skills) and [OpenAI's skill-based OSS maintenance workflow](https://developers.openai.com/blog/skills-agents-sdk)
+- [OpenAI Codex skill locations and configuration](https://learn.chatgpt.com/docs/build-skills) and [OpenAI's skill-based OSS maintenance workflow](https://developers.openai.com/blog/skills-agents-sdk)
 - [Claude Code skills](https://code.claude.com/docs/en/skills)
 - [Cursor Agent Skills](https://cursor.com/docs/skills)
 - [Google Antigravity agent skills](https://antigravity.google/docs/skills)
