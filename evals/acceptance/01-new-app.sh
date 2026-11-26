@@ -3,8 +3,11 @@
 set -uo pipefail
 PROJECT="${1:?project dir required}"
 FAIL=0
-check() { shift
-  if "$@"; then echo "PASS: $1"; else echo "FAIL: $1"; FAIL=$((FAIL+1)); fi; }
+check() {
+  local label="$1"
+  shift
+  if "$@"; then echo "PASS: $label"; else echo "FAIL: $label"; FAIL=$((FAIL+1)); fi
+}
 
 check "compiles" cargo build --manifest-path "$PROJECT/Cargo.toml"
 check "clippy clean" cargo clippy --manifest-path "$PROJECT/Cargo.toml" -- -D warnings

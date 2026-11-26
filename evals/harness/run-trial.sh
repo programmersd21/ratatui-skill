@@ -89,12 +89,14 @@ fi
 
 # Run opencode FROM the project directory (critical fix).
 START_TIME=$(date +%s)
+set +e
 (
   cd "$PROJECT"
   OPENCODE_CONFIG_DIR="$CONFIG_DIR" timeout "$TIMEOUT" "${OPENCODE_BIN:-opencode}" run "$(cat "$TRIAL_DIR/prompt.txt")" \
     > "$TRIAL_DIR/stdout.txt" 2> "$TRIAL_DIR/stderr.txt"
 )
 EXIT_STATUS=$?
+set -e
 END_TIME=$(date +%s)
 ELAPSED=$((END_TIME - START_TIME))
 
@@ -130,7 +132,7 @@ if [ "$TASK_LANG" = "rust" ]; then
     HAS_RATATUI=true
   fi
 fi
-FILES_GENERATED=$(find "$PROJECT" -type f \\( -name '*.rs' -o -name '*.py' \\) ! -path '*/target/*' | wc -l | tr -d ' ')
+FILES_GENERATED=$(find "$PROJECT" -type f \( -name '*.rs' -o -name '*.py' \) ! -path '*/target/*' | wc -l | tr -d ' ')
 
 # Run task-specific acceptance checks if available.
 ACCEPTANCE_SCRIPT="$REPO_ROOT/evals/acceptance/$(basename "$TASK_FILE" .md).sh"

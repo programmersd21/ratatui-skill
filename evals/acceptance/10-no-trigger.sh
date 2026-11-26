@@ -3,8 +3,11 @@
 set -uo pipefail
 PROJECT="${1:?project dir required}"
 FAIL=0
-check() { shift
-  if "$@"; then echo "PASS: $1"; else echo "FAIL: $1"; FAIL=$((FAIL+1)); fi; }
+check() {
+  local label="$1"
+  shift
+  if "$@"; then echo "PASS: $label"; else echo "FAIL: $label"; FAIL=$((FAIL+1)); fi
+}
 
 if [[ ! -f "$PROJECT/Cargo.toml" ]] || ! grep -qi ratatui "$PROJECT/Cargo.toml"; then echo "PASS: no ratatui dependency"; else echo "FAIL: no ratatui dependency"; FAIL=$((FAIL+1)); fi
 if ! grep -rl ratatui "$PROJECT" --include='*.rs' 2>/dev/null | grep -q .; then echo "PASS: no rust files with ratatui"; else echo "FAIL: no rust files with ratatui"; FAIL=$((FAIL+1)); fi
