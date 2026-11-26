@@ -53,10 +53,7 @@ pub fn preview(path: &Path, kind: EntryKind) -> Preview {
     }
 }
 
-fn compare_preview_entries(
-    a: &(bool, String, String),
-    b: &(bool, String, String),
-) -> Ordering {
+fn compare_preview_entries(a: &(bool, String, String), b: &(bool, String, String)) -> Ordering {
     b.0.cmp(&a.0)
         .then_with(|| a.2.cmp(&b.2))
         .then_with(|| a.1.cmp(&b.1))
@@ -154,10 +151,8 @@ mod tests {
 
     impl TempDir {
         fn new(name: &str) -> io::Result<Self> {
-            let path = std::env::temp_dir().join(format!(
-                "dirview-preview-{name}-{}",
-                std::process::id()
-            ));
+            let path =
+                std::env::temp_dir().join(format!("dirview-preview-{name}-{}", std::process::id()));
             if path.exists() {
                 std::fs::remove_dir_all(&path)?;
             }

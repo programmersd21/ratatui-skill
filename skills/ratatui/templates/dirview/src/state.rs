@@ -61,14 +61,8 @@ pub enum Preview {
     Empty,
     Binary,
     Error(String),
-    Dir {
-        names: Vec<String>,
-        total: usize,
-    },
-    Text {
-        lines: Vec<String>,
-        truncated: bool,
-    },
+    Dir { names: Vec<String>, total: usize },
+    Text { lines: Vec<String>, truncated: bool },
 }
 
 #[derive(Debug)]
