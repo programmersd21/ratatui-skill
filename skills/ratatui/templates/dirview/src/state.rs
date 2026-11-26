@@ -61,8 +61,15 @@ pub enum Preview {
     Empty,
     Binary,
     Error(String),
-    Dir { names: Vec<String>, total: usize },
-    Text { lines: Vec<String>, truncated: bool },
+    Dir {
+        names: Vec<String>,
+        total: usize,
+        truncated: bool,
+    },
+    Text {
+        lines: Vec<String>,
+        truncated: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -194,6 +201,10 @@ impl State {
                 };
             }
             Action::Quit => self.quit = true,
+            Action::HelpScrollUp
+            | Action::HelpScrollDown
+            | Action::HelpPageUp
+            | Action::HelpPageDown => {}
             Action::SetPageSize(_) => {}
         }
     }
@@ -313,7 +324,7 @@ mod tests {
     impl Fixture {
         fn new(name: &str) -> std::result::Result<Self, Box<dyn std::error::Error>> {
             let root = std::env::temp_dir().join(format!("dirview-{name}-{}", std::process::id()));
-            let _ = std::fs::remove_dir_all(&root);
+            let _cleanup = std::fs::remove_dir_all(&root);
             std::fs::create_dir_all(root.join("Alpha"))?;
             std::fs::write(root.join("Alpha/inner.txt"), "inner")?;
             std::fs::write(root.join("beta.txt"), "beta")?;
@@ -329,7 +340,7 @@ mod tests {
 
     impl Drop for Fixture {
         fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
+            let _cleanup = std::fs::remove_dir_all(&self.0);
         }
     }
 

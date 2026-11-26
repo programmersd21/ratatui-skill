@@ -1,102 +1,97 @@
 #!/usr/bin/env bash
-# Mechanical checks for common TUI anti-patterns. Each rule is deterministic;
-# design quality is a separate, human judgment recorded in references/slop-tells.md.
-#
-# usage: lint-slop.sh [PROJECT_DIR] [--help]
-#
-# Exit status: 0 when no rule fires, N when N rules fire, 2 on a tooling or
-# usage error. Only non-test code is checked. Scan scope: *.rs under PROJECT_DIR
-# excluding target/, tests/, examples/ and code after a top-level #[cfg(test)].
+set -euo pipefail
 
-set -u
-
-if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
-  printf '%s\n' \
-    "usage: lint-slop.sh [PROJECT_DIR]" "" \
-    "Scan Rust sources for mechanical anti-patterns." \
-    "Rules, why they matter, and how to suppress a line are in references/slop-tells.md." \
-    "Exit 0 clean, 1 per failing rule, 2 on usage or missing GNU grep -P."
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  printf '%s\n' "usage: lint-slop.sh [PROJECT_DIR]" "Scans Rust source and README conventions; Clippy owns compiler-visible lints."
   exit 0
 fi
 
 root="${1:-.}"
-[ -d "$root" ] || { printf 'not a directory: %s\n' "$root" >&2; exit 2; }
+[[ -d "$root" ]] || { printf 'not a directory: %s\n' "$root" >&2; exit 2; }
 
-# A silent pass is worse than no check: fail clearly when the required tool is
-# unavailable instead of swallowing grep's non-zero status.
-if ! printf 'x\n' | grep -P '^x$' >/dev/null 2>&1; then
-  echo "lint-slop: GNU grep with -P (PCRE) is required" >&2
-  exit 2
-fi
+python3 - "$root" <<'PY'
+import pathlib
+import re
+import sys
 
-fail=0
+root = pathlib.Path(sys.argv[1]).resolve()
+files = sorted(
+    p for p in root.rglob("*.rs")
+    if not any(part in {"target", "tests", "examples"} for part in p.parts)
+)
+rules = [
+    ("colors only in theme.rs", re.compile(r"Color::(?:Rgb|Indexed|Red|Green|Blue|Cyan|Yellow|Magenta|White|Black|Gray|DarkGray|Light[A-Za-z]+)\b|Color::from_u32"), lambda p: p.name != "theme.rs"),
+    ("no emoji in source", re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B50\u2B55]"), lambda p: True),
+    ("no unwrap outside tests", re.compile(r"\.unwrap\(\)"), lambda p: True),
+    ("no placeholders", re.compile(r"\b(?:TODO|FIXME|XXX|HACK)\b|todo!\(|unimplemented!\(|(?i:lorem ipsum|placeholder)"), lambda p: True),
+    ("no swallowed errors", re.compile(r"let\s+_\s*=\s*[^;]*(?:Result|Option|try_|read|write|remove_|send|recv)[^;]*;|\.ok\(\);|Err\(_\)\s*=>\s*\{\}"), lambda p: True),
+    ("no debug leftovers", re.compile(r"dbg!\(|eprintln!\(|println!\("), lambda p: True),
+    ("no chat artifacts", re.compile(r"(?i)as an ai|here is the|here's the|let me know|certainly!|i hope this"), lambda p: True),
+    ("no marketing in strings", re.compile(r'(?i)"[^"]*\b(?:blazing|lightning|supercharge|next-gen|powered by)\b[^"]*"'), lambda p: True),
+    ("every key binding is documented", re.compile(r'(?:help|label):\s*""'), lambda p: True),
+]
+failed = 0
+for name, pattern, include in rules:
+    hits = []
+    for path in files:
+        if not include(path):
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except UnicodeDecodeError:
+            continue
+        number = 0
+        while number < len(lines):
+            line = lines[number]
+            if line.strip() == "#[cfg(test)]":
+                item = number + 1
+                while item < len(lines) and not lines[item].strip():
+                    item += 1
+                if item < len(lines) and lines[item].lstrip().startswith("mod ") and "{" in lines[item]:
+                    depth = 0
+                    while item < len(lines):
+                        depth += lines[item].count("{") - lines[item].count("}")
+                        item += 1
+                        if depth <= 0:
+                            break
+                    number = item
+                    continue
+                number = min(item + 1, len(lines))
+                continue
+            if pattern.search(line):
+                if name == "no debug leftovers" and "allow print" in line:
+                    number += 1
+                    continue
+                if name == "no debug leftovers" and 'println!("{USAGE}")' in line:
+                    number += 1
+                    continue
+                hits.append(f"{path.relative_to(root)}:{number + 1}: {line.strip()}")
+            number += 1
+    if hits:
+        failed += 1
+        print(f"FAIL  {name} ({len(hits)})")
+        for hit in hits[:8]:
+            print(f"        {hit}")
+        if len(hits) > 8:
+            print(f"        ... and {len(hits) - 8} more")
+    else:
+        print(f"ok    {name}")
 
-source_lines() {
-  find "$root" -name '*.rs' -type f \
-    -not -path '*/target/*' -not -path '*/tests/*' -not -path '*/examples/*' \
-    -print0 2>/dev/null | sort -z | while IFS= read -r -d '' f; do
-      # Anchored so a #[cfg(test)] inside a string or comment does not hide code.
-      awk -v F="$f" '/^#\[cfg\(test\)\]/ { exit } { print F ":" FNR ": " $0 }' "$f"
-    done
-}
+readme = root / "README.md"
+if readme.is_file():
+    emoji = re.compile(r"[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B50\u2B55]")
+    hits = [(n, line) for n, line in enumerate(readme.read_text(encoding="utf-8").splitlines()[:20], 1) if line.startswith("#") and emoji.search(line)]
+    if hits:
+        failed += 1
+        print("FAIL  README has no emoji headers")
+        for number, line in hits:
+            print(f"        README.md:{number}: {line}")
+    else:
+        print("ok    README has no emoji headers")
+else:
+    print("skip  README not present")
 
-lines="$(source_lines)"
-
-rule() { # name, pattern, [exclude-pattern]
-  local name="$1" pattern="$2" exclude="${3:-^$}" hits count
-  # Do not use `|| true`: a grep failure must be visible, not reported as clean.
-  hits="$(printf '%s\n' "$lines" | grep -P -- "$pattern" | grep -Pv -- "$exclude")"
-  if [ -n "$hits" ]; then
-    count="$(printf '%s\n' "$hits" | wc -l | tr -d ' ')"
-    echo "FAIL  $name ($count)"
-    printf '%s\n' "$hits" | head -8 | sed 's/^/        /'
-    [ "$count" -gt 8 ] && echo "        ... and $((count - 8)) more"
-    fail=$((fail + 1))
-  else
-    echo "ok    $name"
-  fi
-}
-
-# Colors defined away from theme.rs make a theme impossible to audit in one
-# place. This is a location rule, not a ban on bright colors.
-rule "colors only in theme.rs" \
-  'Color::(Rgb|Indexed|Red|Green|Blue|Cyan|Yellow|Magenta|White|Black|Gray|DarkGray|Light[A-Za-z]+)\b|Color::from_u32' \
-  '^[^:]*theme\.rs:'
-# Control characters in rendered text can move the cursor or inject escapes.
-rule "no emoji in source" '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}\x{2B50}\x{2B55}]'
-# An unwrap in production code is a panic waiting for bad input. Tests may unwrap.
-rule "no unwrap outside tests" '\.unwrap\(\)'
-# Unfinished markers shipped as if complete.
-rule "no placeholders" '\b(TODO|FIXME|XXX|HACK)\b|todo!\(|unimplemented!\(|lorem ipsum|placeholder'
-# Discarded Results hide failures. A deliberate default (`unwrap_or_default`)
-# is explicit error handling and is not flagged here.
-rule "no swallowed errors" 'let\s+_\s*=\s*[^;]*(Result|Option|try_|read|write|remove_|send|recv)[^;]*;|\.ok\(\);|Err\(_\) => \{\}'
-# Debug output left in production. A per-line marker is an explicit, reviewable
-# exception; the usage banner in main.rs is the other allowed case.
-rule "no debug leftovers" 'dbg!\(|eprintln!\(|println!\(' \
-  'lint-slop: allow print|println!\("\{USAGE\}"\)'
-# Chat leftovers in source text.
-rule "no chat artifacts" '(?i)as an ai|here is the|here'"'"'s the|let me know|certainly!|i hope this'
-# Marketing words inside user-visible strings, not in comments.
-rule "no marketing in strings" '(?i)"[^"]*\b(blazing|lightning|supercharge|next-gen|powered by)\b[^"]*"'
-
-# A key with no help text cannot be discovered from the generated ? overlay.
-rule "every key binding is documented" 'help:\s*""|label:\s*""'
-
-# README headers must not use emoji.
-if [ -f "$root/README.md" ]; then
-  readme_hits="$(head -20 "$root/README.md" | grep -P '^#+ .*[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]')"
-  if [ -n "$readme_hits" ]; then
-    echo "FAIL  README has no emoji headers"
-    printf '%s\n' "$readme_hits" | sed 's/^/        /'
-    fail=$((fail + 1))
-  else
-    echo "ok    README has no emoji headers"
-  fi
-else
-  echo "skip  README not present (not checked)"
-fi
-
-echo
-if [ "$fail" -eq 0 ]; then echo "clean"; else echo "$fail rule(s) failed"; fi
-exit "$fail"
+print()
+print("clean" if failed == 0 else f"{failed} rule(s) failed")
+sys.exit(failed)
+PY

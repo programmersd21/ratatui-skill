@@ -19,6 +19,10 @@ pub enum Action {
     ToggleHidden,
     CycleSort,
     ToggleHelp,
+    HelpScrollUp,
+    HelpScrollDown,
+    HelpPageUp,
+    HelpPageDown,
     Quit,
     /// Sent by the app when the list height changes, so paging matches.
     SetPageSize(usize),

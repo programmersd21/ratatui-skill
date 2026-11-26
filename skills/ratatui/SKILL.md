@@ -31,14 +31,17 @@ unless the bug lacks coverage. Do not restructure.
 ## 1. Research (before any code)
 
 Run `$SKILL_DIR/scripts/crate-versions.sh ratatui color-eyre unicode-width` plus
-every other crate you plan to use. Quote what it returns. Set `rust-version` in
-Cargo.toml to the highest MSRV among your dependencies.
+every other crate you plan to use. For an existing project, pass
+`--manifest PATH/TO/Cargo.toml` to report the resolved project version beside
+the latest release. Quote the output. Set `rust-version` in Cargo.toml to the
+highest MSRV among your dependencies.
 
 - Check `cargo --version` against each dependency's MSRV. Fix before continuing.
 - Read the ratatui CHANGELOG and BREAKING-CHANGES for your version.
 - Confirm widget crates support your ratatui version (`cargo tree -d`).
-- Import crossterm through `ratatui::crossterm`. Do not add `crossterm` to
-  Cargo.toml unless you can state why.
+- If the app handles terminal events directly, declare `crossterm` as a direct
+  dependency at the version compatible with Ratatui. Import from
+  `crossterm::event` and verify `cargo tree -d` has no duplicate versions.
 - Uncertain API: write a ten-line program and compile it.
 
 See `references/research-checklist.md` for pitfalls found in practice.
@@ -98,9 +101,12 @@ cargo test
 
 Then:
 
-1. **Dump screens.** Render through `TestBackend` at 40x8, 80x24, 200x60 plus
-   empty, error, help states. Read the text. Fix misalignment or clipping.
-2. **PTY smoke.** `$SKILL_DIR/scripts/pty-smoke.py PATH/TO/BINARY`. Universal
+1. **Render checks where they add value.** Use `TestBackend` at 40x8, 80x24,
+   and 200x60 for clipping, alignment and responsive layout. Prefer state-based
+   assertions for behavior; do not snapshot every screen by default.
+2. **Terminal integration.** Use VHS/Betamax recordings or a PTY smoke test
+   for lifecycle, resize and key handling. Startup/exit alone does not prove
+   screen content. `$SKILL_DIR/scripts/pty-smoke.py PATH/TO/BINARY`. Universal
    checks run by default (startup, alternate screen, tiny terminal, clean exit
    via Ctrl-C). Add `--quit-keys`, `--keys`, `--tiny-text`, `--check-ctrl-c`,
    `--check-color`, `--check-resize` for app-specific checks.

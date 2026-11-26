@@ -76,7 +76,7 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 <details open>
 <summary><b>Five steps, in order</b></summary>
 
-1. **Research.** Look up the newest stable version and minimum Rust version of every crate, read the release notes, confirm widget crates match the ratatui version, and compile anything uncertain.
+1. **Research.** Look up the newest stable version, minimum Rust version, and (when given a manifest) the version resolved by the project of every crate, read the release notes, confirm widget crates match the ratatui version, and compile anything uncertain.
 2. **Design brief.** Before any code: layout archetype, one accent color, density, keys, and what each empty or failed state shows, justified from the app's data.
 3. **Build** from a tested template with a strict split: state with no terminal types, rendering with no side effects, and one key table that drives input, footer hints and help.
 4. **Verify.** `cargo fmt --check`, clippy with warnings denied, tests, text dumps of the screen at several sizes, a run in a real pseudo-terminal, and a slop scan.

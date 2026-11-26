@@ -37,7 +37,17 @@ impl App {
             }
 
             if let Some(action) = event::next_action(self.state.mode())? {
-                self.state.update(action);
+                if self.state.mode() == crate::state::Mode::Help {
+                    match action {
+                        Action::HelpScrollUp => self.view.scroll_help(-1),
+                        Action::HelpScrollDown => self.view.scroll_help(1),
+                        Action::HelpPageUp => self.view.scroll_help(-8),
+                        Action::HelpPageDown => self.view.scroll_help(8),
+                        _ => self.state.update(action),
+                    }
+                } else {
+                    self.state.update(action);
+                }
             }
         }
         Ok(())

@@ -8,12 +8,17 @@ license = "MIT"
 publish = false
 
 [dependencies]
+crossterm = "0.29"
 ratatui = "0.30.2"
 color-eyre = "0.6.5"
 unicode-width = "0.2.3"
 
 [lints.clippy]
 unwrap_used = "deny"
-print_stdout = "warn"
 dbg_macro = "deny"
 todo = "deny"
+unimplemented = "deny"
+print_stdout = "warn"
+print_stderr = "deny"
+let_underscore_must_use = "deny"
+unused_result_ok = "deny"

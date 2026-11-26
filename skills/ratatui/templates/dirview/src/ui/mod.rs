@@ -30,12 +30,21 @@ const PREVIEW_MIN_WIDTH: u16 = 80;
 pub struct ViewState {
     offset: usize,
     rows: usize,
+    help_offset: usize,
 }
 
 impl ViewState {
     /// Rows the list showed in the last frame.
     pub fn list_rows(&self) -> usize {
         self.rows
+    }
+
+    pub fn help_offset(&self) -> usize {
+        self.help_offset
+    }
+
+    pub fn scroll_help(&mut self, amount: isize) {
+        self.help_offset = self.help_offset.saturating_add_signed(amount);
     }
 }
 
@@ -68,7 +77,7 @@ pub fn render(frame: &mut Frame, state: &State, view: &mut ViewState, theme: &Th
     footer::render(frame, footer.inner(margin), state, theme);
 
     if state.mode() == Mode::Help {
-        help::render(frame, area, theme);
+        help::render(frame, area, theme, view.help_offset());
     }
 }
 

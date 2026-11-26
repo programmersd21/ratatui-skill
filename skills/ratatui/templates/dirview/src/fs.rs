@@ -53,21 +53,39 @@ pub fn preview(path: &Path, kind: EntryKind) -> Preview {
 }
 
 fn dir_preview(path: &Path) -> Preview {
-    let mut entries = match read_dir(path) {
-        Ok(e) => e,
-        Err(e) => return Preview::Error(e.to_string()),
+    let entries = match std::fs::read_dir(path) {
+        Ok(entries) => entries,
+        Err(error) => return Preview::Error(error.to_string()),
     };
-    let total = entries.len();
-    entries.sort_by_cached_key(|e| (e.kind != EntryKind::Dir, e.name.to_lowercase()));
-    let names = entries
+    let mut names = Vec::with_capacity(PREVIEW_NAMES);
+    let mut truncated = false;
+    for entry in entries.take(PREVIEW_NAMES + 1) {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) => return Preview::Error(error.to_string()),
+        };
+        if names.len() == PREVIEW_NAMES {
+            truncated = true;
+            break;
+        }
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let is_dir = entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false);
+        names.push((is_dir, name));
+    }
+    names.sort_by(|a, b| {
+        b.0.cmp(&a.0)
+            .then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
+    });
+    let total = names.len() + usize::from(truncated);
+    let names = names
         .into_iter()
-        .take(PREVIEW_NAMES)
-        .map(|e| match e.kind {
-            EntryKind::Dir => format!("{}/", e.name),
-            _ => e.name,
-        })
+        .map(|(is_dir, name)| if is_dir { format!("{name}/") } else { name })
         .collect();
-    Preview::Dir { names, total }
+    Preview::Dir {
+        names,
+        total,
+        truncated,
+    }
 }
 
 fn file_preview(path: &Path) -> Preview {
@@ -94,4 +112,25 @@ fn file_preview(path: &Path) -> Preview {
     let truncated = truncated || lines.len() > PREVIEW_LINES;
     lines.truncate(PREVIEW_LINES);
     Preview::Text { lines, truncated }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn directory_preview_is_bounded_and_marks_truncation() -> io::Result<()> {
+        let root = std::env::temp_dir().join(format!("dirview-preview-{}", std::process::id()));
+        let _cleanup = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root)?;
+        for index in 0..(PREVIEW_NAMES + 50) {
+            std::fs::write(root.join(format!("entry-{index:03}")), "")?;
+        }
+        let preview = dir_preview(&root);
+        assert!(
+            matches!(preview, Preview::Dir { names, total, truncated: true } if names.len() == PREVIEW_NAMES && total == PREVIEW_NAMES + 1)
+        );
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
 }
