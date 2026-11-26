@@ -18,7 +18,7 @@ When unsure whether a call exists, write a ten-line program that uses it and run
 ## Pitfalls confirmed in practice
 
 - **Terminal setup is one call.** `ratatui::run(|terminal| ...)` enters the alternate screen and raw mode, restores them on exit, installs a panic hook that restores the terminal before panicking, and passes a `DefaultTerminal`. The ratatui docs say to call it *after* installing any other panic hook, so install `color-eyre` first (as `main.rs` does). Do not hand-roll `enable_raw_mode` and friends for a normal app.
-- **Crossterm comes through ratatui.** Use `ratatui::crossterm::event::{...}`. Adding your own `crossterm` risks two versions in the tree and event types that do not match.
+- **Use a direct crossterm dependency for terminal events.** Declare the release compatible with Ratatui and import from `crossterm::event::{...}`. Check `cargo tree -d` and ensure only one crossterm version is present; do not rely on a transitive re-export as a stable public API.
 - **Key events arrive as press, repeat and release on some platforms.** Ignore `KeyEventKind::Release` or every key fires twice on Windows.
 - **Shifted letters** arrive as the uppercase character, sometimes also with the `SHIFT` modifier. Normalize before matching (see `keymap::resolve`).
 - **`Layout::...areas()` destructures into arrays:** `let [a, b] = Layout::vertical([...]).areas(area);`. The number of names must match the number of constraints.
