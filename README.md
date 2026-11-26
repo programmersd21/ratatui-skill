@@ -115,6 +115,9 @@ The default uses the 16 ANSI colors from your terminal palette. `NO_COLOR` rende
 
 ```text
 AGENTS.md                      the process in short form, for agents without skill support
+assets/                        banner, demo, faq and sponsor images
+docs/                          version-aware distribution proposal
+evals/                         10 evaluation tasks, harness, scoring rubric, results
 skills/ratatui/
   SKILL.md                     the process
   references/
