@@ -106,3 +106,22 @@ fn file_preview(path: &Path) -> Preview {
     lines.truncate(PREVIEW_LINES);
     Preview::Text { lines, truncated }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn directory_preview_is_bounded_and_marks_truncation() -> io::Result<()> {
+        let root = std::env::temp_dir().join(format!("dirview-preview-{}", std::process::id()));
+        let _cleanup = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root)?;
+        for index in 0..(PREVIEW_NAMES + 50) {
+            std::fs::write(root.join(format!("entry-{index:03}")), "")?;
+        }
+        let preview = dir_preview(&root);
+        assert!(matches!(preview, Preview::Dir { names, total, truncated: true } if names.len() == PREVIEW_NAMES && total == PREVIEW_NAMES + 1));
+        std::fs::remove_dir_all(root)?;
+        Ok(())
+    }
+}
