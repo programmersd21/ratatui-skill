@@ -35,7 +35,7 @@ data = json.loads(pathlib.Path(sys.argv[1]).read_text())
 prompt = pathlib.Path(sys.argv[2]).read_text()
 assert data["skill_injected"] is True
 assert data["acceptance_pass"] == "true"
-assert data["skill_activation"] == "unverified"
+assert data["skill_activated"] == "unverified"
 assert "Use the ratatui skill" not in prompt
 PY
 
