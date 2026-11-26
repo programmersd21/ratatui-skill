@@ -61,8 +61,15 @@ pub enum Preview {
     Empty,
     Binary,
     Error(String),
-    Dir { names: Vec<String>, total: usize, truncated: bool },
-    Text { lines: Vec<String>, truncated: bool },
+    Dir {
+        names: Vec<String>,
+        total: usize,
+        truncated: bool,
+    },
+    Text {
+        lines: Vec<String>,
+        truncated: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -194,7 +201,10 @@ impl State {
                 };
             }
             Action::Quit => self.quit = true,
-            Action::HelpScrollUp | Action::HelpScrollDown | Action::HelpPageUp | Action::HelpPageDown => {},
+            Action::HelpScrollUp
+            | Action::HelpScrollDown
+            | Action::HelpPageUp
+            | Action::HelpPageDown => {}
             Action::SetPageSize(_) => {}
         }
     }
