@@ -72,13 +72,20 @@ fn dir_preview(path: &Path) -> Preview {
         let is_dir = entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false);
         names.push((is_dir, name));
     }
-    names.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase())));
+    names.sort_by(|a, b| {
+        b.0.cmp(&a.0)
+            .then_with(|| a.1.to_lowercase().cmp(&b.1.to_lowercase()))
+    });
     let total = names.len() + usize::from(truncated);
     let names = names
         .into_iter()
         .map(|(is_dir, name)| if is_dir { format!("{name}/") } else { name })
         .collect();
-    Preview::Dir { names, total, truncated }
+    Preview::Dir {
+        names,
+        total,
+        truncated,
+    }
 }
 
 fn file_preview(path: &Path) -> Preview {
@@ -120,7 +127,9 @@ mod tests {
             std::fs::write(root.join(format!("entry-{index:03}")), "")?;
         }
         let preview = dir_preview(&root);
-        assert!(matches!(preview, Preview::Dir { names, total, truncated: true } if names.len() == PREVIEW_NAMES && total == PREVIEW_NAMES + 1));
+        assert!(
+            matches!(preview, Preview::Dir { names, total, truncated: true } if names.len() == PREVIEW_NAMES && total == PREVIEW_NAMES + 1)
+        );
         std::fs::remove_dir_all(root)?;
         Ok(())
     }
