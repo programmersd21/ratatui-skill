@@ -79,6 +79,48 @@ if MOCK_BEHAVIOR=success OPENCODE_BIN="$MOCK" bash "$ROOT/evals/harness/run-tria
   echo "repository-local trial directory was incorrectly accepted" >&2
   exit 1
 fi
+if MOCK_BEHAVIOR=python OPENCODE_BIN="$MOCK" bash "$ROOT/evals/harness/run-trial.sh" "$TASK" 0 "$TMP/success" 10 >/dev/null 2>&1; then
+  echo "non-empty trial directory was incorrectly reused" >&2
+  exit 1
+fi
+
+mkdir -p "$TMP/summary/python-skill0-trial1"
+cat > "$TMP/summary/python-skill0-trial1/result.json" <<'RESULT'
+{
+  "exit_status": 0,
+  "timed_out": false,
+  "task_language": "python",
+  "acceptance_pass": "true"
+}
+RESULT
+if python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary" >/dev/null; then
+  echo "summary accepted a trial without human review" >&2
+  exit 1
+else
+  status=$?
+  [ "$status" -eq 2 ] || exit "$status"
+fi
+cp "$ROOT/evals/human-review-template.json" "$TMP/summary/python-skill0-trial1/human-review.json"
+python3 - "$TMP/summary/python-skill0-trial1/human-review.json" <<'PY'
+import json, pathlib, sys
+path = pathlib.Path(sys.argv[1])
+data = json.loads(path.read_text())
+data["reviewer"] = "ci-test"
+data["reviewed_at"] = "2026-11-26"
+data["status"] = "passed"
+data["notes"] = "Deterministic summarizer fixture."
+data["scores"] = {key: 2 for key in data["scores"]}
+path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary" >/dev/null
+
+mkdir -p "$TMP/non-empty-results"
+touch "$TMP/non-empty-results/old-run"
+if bash "$ROOT/evals/harness/run-suite.sh" 1 10 "$TMP/non-empty-results" >/dev/null 2>&1; then
+  echo "run-suite reused a non-empty results directory" >&2
+  exit 1
+fi
+
 bash -n "$ROOT/evals/harness/"*.sh "$ROOT/evals/acceptance/"*.sh
 if grep -nE '(^|[;&|[:space:]])eval[[:space:]]' "$ROOT/evals/acceptance/"*.sh; then
   echo "unsafe eval remains in acceptance scripts" >&2

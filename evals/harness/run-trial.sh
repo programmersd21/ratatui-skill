@@ -21,6 +21,10 @@ TASK_FILE="$(cd "$(dirname "$TASK_FILE")" && pwd -P)/$(basename "$TASK_FILE")"
 mkdir -p "$TRIAL_DIR"
 TRIAL_DIR="$(cd "$TRIAL_DIR" && pwd -P)"
 case "$TRIAL_DIR/" in "$REPO_ROOT/"*) echo "TRIAL_DIR must be outside the repository to prevent AGENTS.md leakage" >&2; exit 2 ;; esac
+if [[ -n "$(find "$TRIAL_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+  printf 'trial directory is not empty: %s\n' "$TRIAL_DIR" >&2
+  exit 2
+fi
 
 TASK=$(cat "$TASK_FILE")
 PROJECT="$TRIAL_DIR/project"

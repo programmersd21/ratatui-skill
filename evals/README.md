@@ -38,7 +38,21 @@ bash evals/harness/run-trial.sh evals/tasks/02-add-widget.md 1 /tmp/widget-skill
 bash evals/harness/run-trial.sh evals/tasks/02-add-widget.md 0 /tmp/widget-base 600
 ```
 
-A trial directory contains the prompt, generated project, stdout, stderr, and `result.json`. Preserve these artifacts.
+A trial directory contains the prompt, generated project, stdout, stderr, and `result.json`. Preserve these artifacts. Trial and results directories must be new or empty; the harness refuses to reuse old output to avoid contaminating later trials.
+
+## Human review
+
+Automated acceptance is not a substitute for code and behavior review. Copy the template into each trial directory and complete it:
+
+```bash
+cp evals/human-review-template.json /path/to/trial/human-review.json
+python3 evals/harness/summarize-results.py /path/to/results
+```
+
+The review record must include a reviewer, ISO date, a `passed` or `failed` judgment, all ten 0-2 rubric scores, critical failures, and notes. A passing judgment with critical failures is rejected. The rubric deliberately has no universal numeric pass threshold; the reviewer must explain the judgment.
+
+The summary script can be rerun after reviews are added without rerunning the agent trials. It exits 2 while acceptance or review is incomplete, and 1 when a trial fails.
+
 
 ## Method
 
@@ -62,9 +76,10 @@ Keep objective checks and human judgments separate. Do not collapse all dimensio
 - `tasks/`: task specifications.
 - `fixtures/`: starting projects for existing-project and compatibility tasks.
 - `acceptance/`: deterministic checks.
-- `harness/`: isolated trial execution and regression tests.
+- `harness/`: isolated trial execution, deterministic tests, and result summarization.
 - `scoring-rubric.md`: human review criteria.
-- `results/`: raw artifacts and honest summaries.
+- `human-review-template.json`: structured review record for each trial.
+- `results/`: committed preliminary artifacts and honest summaries. New trial artifacts are written outside the repository.
 
 ## Limitations
 

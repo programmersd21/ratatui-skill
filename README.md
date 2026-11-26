@@ -117,7 +117,7 @@ The demo uses the terminal palette by default and supports `NO_COLOR` for monoch
 AGENTS.md                      the process in short form, for agents without skill support
 assets/                        banner, demo, faq and sponsor images
 docs/                          version-aware distribution proposal
-evals/                         10 evaluation tasks, harness, scoring rubric, results
+evals/                         task suite, paired-run harness, scoring rubric, human-review records
 skills/ratatui/
   SKILL.md                     the process
   references/

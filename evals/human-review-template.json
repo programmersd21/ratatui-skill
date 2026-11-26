@@ -1,0 +1,19 @@
+{
+  "reviewer": "",
+  "reviewed_at": "YYYY-MM-DD",
+  "status": "passed",
+  "scores": {
+    "functional_acceptance": 0,
+    "api_version_correctness": 0,
+    "terminal_lifecycle": 0,
+    "keyboard_interaction": 0,
+    "resize_layout": 0,
+    "state_error_handling": 0,
+    "architecture": 0,
+    "tests": 0,
+    "scope_discipline": 0,
+    "verification_quality": 0
+  },
+  "critical_failures": [],
+  "notes": ""
+}
