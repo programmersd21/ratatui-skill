@@ -37,8 +37,9 @@ Cargo.toml to the highest MSRV among your dependencies.
 - Check `cargo --version` against each dependency's MSRV. Fix before continuing.
 - Read the ratatui CHANGELOG and BREAKING-CHANGES for your version.
 - Confirm widget crates support your ratatui version (`cargo tree -d`).
-- Import crossterm through `ratatui::crossterm`. Do not add `crossterm` to
-  Cargo.toml unless you can state why.
+- If the app handles terminal events directly, declare `crossterm` as a direct
+  dependency at the version compatible with Ratatui. Import from
+  `crossterm::event` and verify `cargo tree -d` has no duplicate versions.
 - Uncertain API: write a ten-line program and compile it.
 
 See `references/research-checklist.md` for pitfalls found in practice.
