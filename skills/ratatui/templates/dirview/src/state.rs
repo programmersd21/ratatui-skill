@@ -99,7 +99,6 @@ fn spawn_preview_worker() -> (Sender<PreviewJob>, Receiver<(u64, Preview)>) {
     (job_tx, result_rx)
 }
 
-#[derive(Debug)]
 pub struct State {
     dir: PathBuf,
     entries: Vec<Entry>,
@@ -428,6 +427,17 @@ mod tests {
         s.visible_entries().map(|e| e.name.as_str()).collect()
     }
 
+    fn wait_for_preview(state: &mut State) -> Result {
+        for _ in 0..200 {
+            state.poll_preview();
+            if !matches!(state.preview(), Preview::Loading) {
+                return Ok(());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        Err("preview worker did not finish".into())
+    }
+
     #[test]
     fn dirs_come_first_and_dotfiles_are_hidden() -> Result {
         let fx = Fixture::new("order")?;
@@ -497,6 +507,7 @@ mod tests {
         let fx = Fixture::new("nav")?;
         let mut s = fx.state()?;
         s.update(Action::Enter);
+        wait_for_preview(&mut s)?;
         assert_eq!(names(&s), ["inner.txt"]);
         assert_eq!(
             s.preview(),
@@ -506,6 +517,7 @@ mod tests {
             }
         );
         s.update(Action::Parent);
+        wait_for_preview(&mut s)?;
         assert_eq!(s.selected_entry().map(|e| e.name.as_str()), Some("Alpha"));
         Ok(())
     }
