@@ -3,6 +3,7 @@
 use std::cmp::Ordering;
 use std::io::{self, Read};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::time::SystemTime;
 
 use crate::state::{Entry, EntryKind, Preview};
@@ -46,10 +47,22 @@ fn kind_of(meta: &std::fs::Metadata) -> EntryKind {
 
 /// Build the preview for an entry. Never blocks on special files.
 pub fn preview(path: &Path, kind: EntryKind) -> Preview {
+    let cancelled = AtomicBool::new(false);
+    preview_cancellable(path, kind, &cancelled).unwrap_or(Preview::Empty)
+}
+
+pub(crate) fn preview_cancellable(
+    path: &Path,
+    kind: EntryKind,
+    cancelled: &AtomicBool,
+) -> Option<Preview> {
+    if cancelled.load(AtomicOrdering::Relaxed) {
+        return None;
+    }
     match kind {
-        EntryKind::Dir => dir_preview(path),
-        EntryKind::File => file_preview(path),
-        EntryKind::Other => Preview::Empty,
+        EntryKind::Dir => dir_preview_cancellable(path, cancelled),
+        EntryKind::File => Some(file_preview(path)),
+        EntryKind::Other => Some(Preview::Empty),
     }
 }
 
@@ -73,21 +86,29 @@ fn entry_is_dir(entry: &std::fs::DirEntry) -> io::Result<bool> {
 }
 
 fn dir_preview(path: &Path) -> Preview {
+    let cancelled = AtomicBool::new(false);
+    dir_preview_cancellable(path, &cancelled).unwrap_or(Preview::Empty)
+}
+
+fn dir_preview_cancellable(path: &Path, cancelled: &AtomicBool) -> Option<Preview> {
     let entries = match std::fs::read_dir(path) {
         Ok(entries) => entries,
-        Err(error) => return Preview::Error(error.to_string()),
+        Err(error) => return Some(Preview::Error(error.to_string())),
     };
     let mut names = Vec::with_capacity(PREVIEW_NAMES);
     let mut total = 0usize;
 
     for entry in entries {
+        if cancelled.load(AtomicOrdering::Relaxed) {
+            return None;
+        }
         let entry = match entry {
             Ok(entry) => entry,
-            Err(error) => return Preview::Error(error.to_string()),
+            Err(error) => return Some(Preview::Error(error.to_string())),
         };
         let is_dir = match entry_is_dir(&entry) {
             Ok(is_dir) => is_dir,
-            Err(error) => return Preview::Error(error.to_string()),
+            Err(error) => return Some(Preview::Error(error.to_string())),
         };
         let name = entry.file_name().to_string_lossy().into_owned();
         let candidate = (is_dir, name.clone(), name.to_lowercase());
@@ -113,7 +134,7 @@ fn dir_preview(path: &Path) -> Preview {
         })
         .collect();
 
-    Preview::Dir { names, total }
+    Some(Preview::Dir { names, total })
 }
 
 fn file_preview(path: &Path) -> Preview {
