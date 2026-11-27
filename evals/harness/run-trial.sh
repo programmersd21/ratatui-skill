@@ -11,11 +11,13 @@ umask 077
 TASK_FILE="${1:?task file required}"
 WITH_SKILL="${2:?0 or 1}"
 TRIAL_DIR="${3:?trial dir required}"
-TIMEOUT="${4:-300}"
+TIMEOUT="${4:-600}"
+EVAL_MODEL="${EVAL_MODEL:-}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd -P)"
 [[ "$WITH_SKILL" == 0 || "$WITH_SKILL" == 1 ]] || { echo "WITH_SKILL must be 0 or 1" >&2; exit 2; }
 [[ "$TIMEOUT" =~ ^[1-9][0-9]*$ ]] || { echo "TIMEOUT must be a positive integer" >&2; exit 2; }
+[[ -n "$EVAL_MODEL" ]] || { echo "Set EVAL_MODEL to an explicit provider/model ID." >&2; exit 2; }
 TASK_FILE="$(cd "$(dirname "$TASK_FILE")" && pwd -P)/$(basename "$TASK_FILE")"
 [[ -f "$TASK_FILE" ]] || { echo "task file not found" >&2; exit 2; }
 mkdir -p "$TRIAL_DIR"
@@ -30,19 +32,58 @@ TASK=$(cat "$TASK_FILE")
 PROJECT="$TRIAL_DIR/project"
 mkdir -p "$PROJECT"
 
-# Isolated opencode config per trial (never touch user's real config).
+ORIGINAL_HOME="$HOME"
+ORIGINAL_XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$ORIGINAL_HOME/.config}"
+ORIGINAL_XDG_DATA_HOME="${XDG_DATA_HOME:-$ORIGINAL_HOME/.local/share}"
+ORIGINAL_DB="${OPENCODE_DB:-$ORIGINAL_XDG_DATA_HOME/opencode/opencode.db}"
 SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/ratatui-skill-trial.XXXXXX")"
 CONFIG_DIR="$SCRATCH/opencode-config"
-mkdir -p "$CONFIG_DIR"
-chmod 700 "$SCRATCH" "$CONFIG_DIR"
+ISOLATED_HOME="$SCRATCH/home"
+ISOLATED_XDG_CONFIG="$SCRATCH/xdg-config"
+ISOLATED_XDG_DATA="$SCRATCH/xdg-data"
+ISOLATED_XDG_CACHE="$SCRATCH/xdg-cache"
+ISOLATED_XDG_STATE="$SCRATCH/xdg-state"
+mkdir -p "$CONFIG_DIR" "$ISOLATED_HOME" "$ISOLATED_XDG_CONFIG" "$ISOLATED_XDG_DATA/opencode" "$ISOLATED_XDG_CACHE" "$ISOLATED_XDG_STATE"
+chmod 700 "$SCRATCH" "$CONFIG_DIR" "$ISOLATED_HOME"
 cleanup() { rm -rf "$SCRATCH"; }
 trap cleanup EXIT INT TERM
-if [ -f "$HOME/.config/opencode/auth.json" ]; then
-  install -m 600 "$HOME/.config/opencode/auth.json" "$CONFIG_DIR/auth.json"
+
+for system_skill in "/etc/opencode/skills/ratatui/SKILL.md" "/Library/Application Support/opencode/skills/ratatui/SKILL.md"; do
+  if [ -f "$system_skill" ]; then
+    echo "Machine-wide Ratatui skill found at $system_skill; trial isolation is not guaranteed." >&2
+    exit 2
+  fi
+done
+
+for auth_file in "$ORIGINAL_XDG_DATA_HOME/opencode/auth.json" "$ORIGINAL_XDG_CONFIG_HOME/opencode/auth.json"; do
+  if [ -f "$auth_file" ]; then
+    install -m 600 "$auth_file" "$ISOLATED_XDG_DATA/opencode/auth.json"
+  fi
+done
+if [ -f "$ORIGINAL_DB" ]; then
+  python3 - "$ORIGINAL_DB" "$ISOLATED_XDG_DATA/opencode/opencode.db" <<'PYDB'
+import pathlib
+import sqlite3
+import sys
+
+source = sqlite3.connect(pathlib.Path(sys.argv[1]).resolve().as_uri() + "?mode=ro", uri=True)
+target = sqlite3.connect(sys.argv[2])
+try:
+    source.backup(target)
+finally:
+    target.close()
+    source.close()
+PYDB
 fi
-if [ -f "$HOME/.config/opencode/opencode.json" ]; then
-  install -m 600 "$HOME/.config/opencode/opencode.json" "$CONFIG_DIR/opencode.json"
-fi
+
+export HOME="$ISOLATED_HOME"
+export XDG_CONFIG_HOME="$ISOLATED_XDG_CONFIG"
+export XDG_DATA_HOME="$ISOLATED_XDG_DATA"
+export XDG_CACHE_HOME="$ISOLATED_XDG_CACHE"
+export XDG_STATE_HOME="$ISOLATED_XDG_STATE"
+export OPENCODE_CONFIG_DIR="$CONFIG_DIR"
+export OPENCODE_DB="$ISOLATED_XDG_DATA/opencode/opencode.db"
+unset OPENCODE_CONFIG_CONTENT
 
 # Skill injection: copy skill only for skill-enabled trials.
 SKILL_HASH="none"
@@ -128,24 +169,94 @@ START_TIME=$(date +%s)
 set +e
 (
   cd "$PROJECT"
-  OPENCODE_CONFIG_DIR="$CONFIG_DIR" timeout "$TIMEOUT" "${OPENCODE_BIN:-opencode}" run "$(cat "$TRIAL_DIR/prompt.txt")" \
-    > "$TRIAL_DIR/stdout.txt" 2> "$TRIAL_DIR/stderr.txt"
+  timeout "$TIMEOUT" "${OPENCODE_BIN:-opencode}" run --standalone --format json --model "$EVAL_MODEL" "$(cat "$TRIAL_DIR/prompt.txt")" \
+    > "$TRIAL_DIR/events.ndjson" 2> "$TRIAL_DIR/stderr.txt"
 )
 EXIT_STATUS=$?
 set -e
 END_TIME=$(date +%s)
 ELAPSED=$((END_TIME - START_TIME))
 
+TELEMETRY="$(python3 - "$TRIAL_DIR/events.ndjson" "$TRIAL_DIR/stdout.txt" "$WITH_SKILL" <<'PYEVENTS'
+import json
+import pathlib
+import sys
+
+event_path = pathlib.Path(sys.argv[1])
+text_path = pathlib.Path(sys.argv[2])
+with_skill = sys.argv[3] == "1"
+valid_events = 0
+skill_calls = 0
+subagent_calls = 0
+tool_names = set()
+text_parts = []
+
+for line in event_path.read_text(encoding="utf-8", errors="replace").splitlines():
+    try:
+        event = json.loads(line)
+    except json.JSONDecodeError:
+        if line.strip():
+            text_parts.append(line)
+        continue
+    if not isinstance(event, dict):
+        continue
+    valid_events += 1
+    part = event.get("part")
+    if not isinstance(part, dict):
+        part = {}
+    if event.get("type") == "text" and isinstance(part.get("text"), str):
+        text_parts.append(part["text"])
+    if event.get("type") != "tool_use":
+        continue
+    tool = part.get("tool")
+    if not isinstance(tool, str):
+        continue
+    tool_names.add(tool)
+    state = part.get("state")
+    if not isinstance(state, dict):
+        state = {}
+    inputs = state.get("input")
+    if not isinstance(inputs, dict):
+        inputs = {}
+    name = inputs.get("name", inputs.get("skill", inputs.get("skill_name")))
+    if tool == "skill" and name == "ratatui":
+        skill_calls += 1
+    if tool in {"task", "subagent"}:
+        subagent_calls += 1
+
+text_path.write_text("\n".join(text_parts) + ("\n" if text_parts else ""), encoding="utf-8")
+if skill_calls:
+    activated = "true"
+elif subagent_calls or valid_events == 0:
+    activated = "unverified"
+else:
+    activated = "false"
+if with_skill:
+    leaked = "not_applicable"
+elif skill_calls:
+    leaked = "true"
+elif subagent_calls or valid_events == 0:
+    leaked = "unverified"
+else:
+    leaked = "false"
+print(json.dumps({
+    "skill_activated": activated,
+    "skill_leaked": leaked,
+    "skill_tool_calls": skill_calls,
+    "subagent_tool_calls": subagent_calls,
+    "tool_names": sorted(tool_names),
+    "json_event_count": valid_events
+}, separators=(",", ":")))
+PYEVENTS
+)"
+SKILL_ACTIVATED="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["skill_activated"])' "$TELEMETRY")"
+SKILL_LEAKED="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["skill_leaked"])' "$TELEMETRY")"
+
 TIMED_OUT=false
 if [ "$EXIT_STATUS" = "124" ]; then
   TIMED_OUT=true
 fi
 
-# Skill activation cannot be verified from output text alone.
-# Report as unverified; a future harness version can check agent tool calls.
-SKILL_ACTIVATED="unverified"
-# Skill leakage cannot be verified from output text alone.
-SKILL_LEAKED="unverified"
 
 # Collect results based on language.
 COMPILE_OK=false
