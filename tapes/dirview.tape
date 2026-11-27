@@ -27,14 +27,13 @@ State target/betamax/dirview-list.json
 Sleep 500ms
 
 Type "?"
+Wait+Screen "Browse"
+Type "jjjjjjj"
 Wait+Screen "Scroll down"
 Screenshot target/betamax/dirview-help.png
 State target/betamax/dirview-help.json
 Sleep 500ms
 
-Type "j"
-Wait+Screen "Close help"
-Sleep 300ms
 Type "Esc"
 Wait+Screen "items"
 Type "q"

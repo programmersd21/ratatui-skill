@@ -4,9 +4,9 @@
 
 use std::io;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
 use std::thread;
 use std::time::SystemTime;
 
@@ -86,9 +86,7 @@ fn spawn_preview_worker() -> (Sender<PreviewJob>, Receiver<(u64, Preview)>) {
             if job.cancelled.load(AtomicOrdering::Relaxed) {
                 continue;
             }
-            if let Some(preview) =
-                fs::preview_cancellable(&job.path, job.kind, &job.cancelled)
-            {
+            if let Some(preview) = fs::preview_cancellable(&job.path, job.kind, &job.cancelled) {
                 if !job.cancelled.load(AtomicOrdering::Relaxed) {
                     let _ = result_tx.send((job.request, preview));
                 }
