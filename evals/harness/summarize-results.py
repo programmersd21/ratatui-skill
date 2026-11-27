@@ -131,27 +131,30 @@ def main():
         leaked = result.get("skill_leaked")
         expected_trigger = result.get("expected_skill_trigger")
         with_skill = result.get("with_skill")
+        activation_is_unverified = False
         if activated not in {"true", "false", "unverified"} or type(with_skill) is not bool:
             trial_failed = True
-            activation_unverified += 1
+            activation_is_unverified = True
         elif with_skill and expected_trigger in {"yes", "no"}:
             if activated == "unverified":
-                activation_unverified += 1
+                activation_is_unverified = True
             elif (expected_trigger == "yes" and activated == "false") or (expected_trigger == "no" and activated == "true"):
                 activation_mismatch += 1
                 trial_failed = True
         if with_skill is False:
             if leaked == "unverified":
-                activation_unverified += 1
+                activation_is_unverified = True
             elif leaked == "true":
                 activation_mismatch += 1
                 trial_failed = True
             elif leaked != "false":
                 trial_failed = True
+        if activation_is_unverified:
+            activation_unverified += 1
         if acceptance == "false":
             trial_failed = True
         if result.get("task_language") == "rust":
-            if not all(result.get(key) is True for key in ("compile_ok", "clippy_ok", "test_ok")):
+            if not all(result.get(key) is True for key in ("fmt_ok", "compile_ok", "clippy_ok", "test_ok")):
                 trial_failed = True
 
         if result.get("exit_status") == 0 and result.get("timed_out") is False:
