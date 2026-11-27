@@ -32,6 +32,7 @@ pub fn render(frame: &mut Frame, area: Rect, state: &State, theme: &Theme) {
     lines.push(Line::raw(""));
     match state.preview() {
         Preview::Empty => {}
+        Preview::Loading => lines.push(Line::styled("loading preview…", theme.muted)),
         Preview::Binary => lines.push(Line::styled("binary file", theme.muted)),
         Preview::Error(message) => {
             lines.push(Line::styled(sanitize(message).into_owned(), theme.error));

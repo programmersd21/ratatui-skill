@@ -28,6 +28,7 @@ impl App {
 
     pub fn run(mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.state.should_quit() {
+            self.state.poll_preview();
             terminal.draw(|frame| ui::render(frame, &self.state, &mut self.view, &self.theme))?;
 
             // The view measured the list; tell the state so paging matches.
