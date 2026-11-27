@@ -297,10 +297,11 @@ if [ -x "$ACCEPTANCE_SCRIPT" ]; then
 fi
 
 # Write result using Python for valid JSON.
-python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$REPO_COMMIT" "$TASK_HASH" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$TASK_FIXTURE" "$TASK_TRIGGER" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" <<'PY'
+python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$REPO_COMMIT" "$TASK_HASH" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$TASK_FIXTURE" "$TASK_TRIGGER" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" "$TELEMETRY" <<'PY'
 import json, sys, os
 (trial_dir, task, with_skill, repository_commit, task_hash, exit_status, timed_out, elapsed, skill_hash, injected,
- activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, fixture, expected_trigger, acceptance, details) = sys.argv[1:]
+ activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, fixture, expected_trigger, acceptance, details, telemetry_json) = sys.argv[1:]
+telemetry = json.loads(telemetry_json)
 result = {
     "task": os.path.basename(task),
     "repository_commit": repository_commit,
@@ -313,12 +314,17 @@ result = {
     "skill_injected": injected == "true",
     "skill_activated": activated,
     "skill_leaked": leaked,
+    "skill_tool_calls": telemetry["skill_tool_calls"],
+    "subagent_tool_calls": telemetry["subagent_tool_calls"],
+    "tool_names": telemetry["tool_names"],
+    "agent_json_event_count": telemetry["json_event_count"],
     "task_language": lang,
     "model": os.environ.get("EVAL_MODEL", "not recorded"),
     "provider": os.environ.get("EVAL_PROVIDER", "not recorded"),
     "model_settings": os.environ.get("EVAL_MODEL_SETTINGS", "not recorded"),
     "task_fixture": fixture or None,
     "expected_skill_trigger": expected_trigger or None,
+    "fmt_ok": fmt_ok == "true",
     "compile_ok": compile_ok == "true",
     "clippy_ok": clippy_ok == "true",
     "test_ok": test_ok == "true",
