@@ -6,7 +6,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: betamax-${ github.ref }
+  group: betamax-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: read
     env:
-      CARGO_TARGET_DIR: ${ github.workspace }/target
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

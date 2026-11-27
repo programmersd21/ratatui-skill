@@ -63,10 +63,10 @@ MOCK_SUBAGENT_CALL=1 MOCK_BEHAVIOR=python OPENCODE_BIN="$MOCK" bash "$ROOT/evals
 python3 - "$TMP/subagent/result.json" <<'PY'
 import json, pathlib, sys
 data = json.loads(pathlib.Path(sys.argv[1]).read_text())
-assert data["skill_activated"] == "false"
+assert data["skill_activated"] == "unverified"
 assert data["skill_leaked"] == "not_applicable"
+assert data["subagent_tool_calls"] == 1
 PY
-
 
 mkdir -p "$TMP/bin"
 cat > "$TMP/bin/cargo" <<'CARGO'
