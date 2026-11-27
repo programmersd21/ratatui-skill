@@ -85,7 +85,7 @@ export XDG_CACHE_HOME="$ISOLATED_XDG_CACHE"
 export XDG_STATE_HOME="$ISOLATED_XDG_STATE"
 export OPENCODE_CONFIG_DIR="$CONFIG_DIR"
 export OPENCODE_DB="$ISOLATED_XDG_DATA/opencode/opencode.db"
-unset OPENCODE_CONFIG_CONTENT
+unset OPENCODE_CONFIG OPENCODE_CONFIG_CONTENT
 
 # Skill injection: copy skill only for skill-enabled trials.
 SKILL_HASH="none"
