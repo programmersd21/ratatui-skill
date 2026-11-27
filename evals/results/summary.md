@@ -1,46 +1,51 @@
-# Evaluation results summary
+# Evaluation status
 
-## Environment
+Last updated: 27 November 2026.
 
-- Model: beam-free (opencode, OpenRouter-backed)
-- Date: 2026-11-26
-- Harness: `evals/harness/run-trial.sh` (v3, honest exit status, language-aware, isolated config)
-- Skill commit: 33b5d2b (first trial), 2da8f8e (harness fixes)
+## Current conclusion
 
-## Trials run
+The skill has **not yet been shown to improve Ratatui code generation**. The current harness is designed for a controlled comparison, but a complete real-model evaluation has not been run.
 
-| Task | Condition | Compile | Clippy | Tests | Ratatui | Files | Timed out | Acceptance | Notes |
-|---|---|---|---|---|---|---|---|---|---|
-| 10-no-trigger | no-skill | N/A (Python) | N/A | N/A | No | 0 | No | PASS | Correctly did not use Ratatui |
-| 10-no-trigger | with-skill | N/A (Python) | N/A | N/A | No | 0 | No | PASS | Correctly did not trigger skill |
-| 01-new-app | with-skill | No | No | No | Yes | 6 | Yes (180s) | N/A (timed out) | Generated partial code (action, state, keymap, event, lib, Cargo.toml). Timed out before main.rs/ui/theme. |
+The repository now contains ten task specifications. The recommended initial evaluation is three repetitions for each task in both conditions:
 
-## Key findings
+- 10 tasks
+- 2 conditions (skill available / baseline)
+- 3 repetitions
+- 60 real model runs
 
-1. The skill correctly does not trigger on non-Rust tasks (Eval 10, both conditions).
-2. The skill's "copy structure" instruction caused the agent to follow the skill's module structure (action/keymap/state/event split) but the trial timed out before completing. Whether the agent copied the dirview template verbatim or not cannot be determined from the partial output.
-3. The 180s timeout is insufficient for a full app generation. The harness now supports configurable timeouts.
+No results from those 60 runs are included in this repository. The CI mock agent tests the harness mechanics only; it is not a substitute for model evaluation.
 
-## Contradiction resolution
+## Historical exploratory runs
 
-An earlier version of this summary claimed the agent copied the dirview template and forgot to rename `use dirview::App;`. This claim was based on a different trial's partial output. The raw logs for the only completed Rust trial (Eval 01, trial 1) show 6 source files generated (action, state, keymap, event, lib, Cargo.toml) with no main.rs or ui/ directory. Whether the agent copied the template or wrote from scratch cannot be determined from this partial output. The claim has been retracted. Raw artifacts are the source of truth.
+The following runs predate the current isolated, randomized harness and must not be combined into a skill-effectiveness score:
 
-## Limitations
+| Task | Condition | Outcome | Interpretation |
+|---|---|---|---|
+| 10-no-trigger | Baseline | Python task passed | One historical negative-trigger smoke run |
+| 10-no-trigger | Skill available | Python task passed without invoking Ratatui | One historical negative-trigger smoke run |
+| 01-new-app | Skill available | Timed out at 180 seconds after generating a partial Rust project | Incomplete exploratory run; no paired baseline |
 
-- Only 1 partial Rust trial completed (timed out at 180s).
-- No no-skill comparison for Rust tasks completed.
-- Results are preliminary and not statistically significant.
-- Full evaluation requires ~10 min per trial with a real model.
-- Skill activation is reported as "unverified" (cannot be proven from output text).
+The two Python smoke runs do not prove skill quality. The partial Rust run cannot be counted as a successful implementation or compared with a baseline. Its raw output did not establish whether the model copied the dirview template or independently chose a similar structure.
 
-## Harness improvements made (v3)
+## What CI verifies
 
-- Real skill injection (copy to isolated opencode config, verify presence)
-- Honest exit status (no `|| true` suppression)
-- Timeout classification (exit 124 = timeout)
-- Separate stdout/stderr logs
-- Skill content hash (SHA256 of all skill files, not git HEAD)
-- Language-aware (Rust vs Python via task metadata)
-- Configurable timeout
-- Task-specific acceptance scripts
-- No skill leakage into baseline (config isolated)
+CI verifies repository behavior and test infrastructure, not model capability:
+
+- The harness tests exercise isolated trial setup, fixture staging, result validation, acceptance status, skill activation telemetry, baseline leakage detection, and incomplete-review handling using a deterministic mock agent.
+- The dirview tests cover preview sorting, counts, symlinks, help rendering, and scrolling.
+- A 50,000-entry directory regression test checks that directory preview work is dispatched to a background worker and that the exact total and bounded sample are returned.
+- A Betamax tape exercises the interactive dirview terminal flow. Its CI status must be checked independently from the Rust test suite.
+
+## Remaining evidence required
+
+1. Run the paired suite with one fixed provider/model version and identical settings in both conditions.
+2. Preserve all trial directories, JSON event streams, compiler/test logs, model metadata, and randomized order schedule.
+3. Complete task-specific acceptance checks, then obtain independent human review using human-review-template.json.
+4. Report failures, timeouts, unverified skill activations, and excluded trials. Do not omit poor runs from the denominator.
+5. Smoke-test the documented installation and invocation paths in each agent client before claiming runtime compatibility.
+
+## Reproducing the evaluation
+
+See evals/README.md for the exact OpenCode command, isolation model, paired schedule, metadata, and human-review workflow.
+
+A complete run requires OpenCode and an operator-configured provider credential. The repository CI does not have those credentials and intentionally does not run paid model trials.
