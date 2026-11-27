@@ -553,7 +553,7 @@ mod tests {
         let large = fx.0.join("large");
         std::fs::create_dir(&large)?;
         for index in 0..50_000 {
-            std::fs::write(large.join(format!("entry-{index:05}")), [])?;
+            std::fs::write(large.join(format!("entry-{index:05}")), b"")?;
         }
 
         let mut state = fx.state()?;
