@@ -1,86 +1,87 @@
 # Evaluation suite
 
-This suite is intended to measure whether the Ratatui skill improves agent results. It is not proof of effectiveness until comparable trials have been completed and graded.
+This suite is intended to measure whether the Ratatui skill improves agent results. The harness is a reproducible runner, not evidence of effectiveness by itself.
 
 ## Current status
 
-- Ten task specifications exist in `tasks/`.
+- Ten task specifications cover new projects, existing-project changes, compatibility, debugging, and a negative-trigger case.
 - Existing-project tasks use explicit fixtures staged into isolated trial workspaces.
-- Each trial records the skill content hash, task, condition, process exit status, elapsed time, language checks, and acceptance status.
-- Only tasks with an acceptance script receive automated acceptance.
-- Tasks without an automated acceptance script remain **ungraded** until a reviewer evaluates their stated criteria.
-- Committed results are preliminary. They do not establish that the skill improves Rust task outcomes.
+- Each trial records repository commit, task-spec SHA-256, skill content hash, condition, model/provider labels, timing, process exit status, tool-call telemetry, language checks, and acceptance status.
+- Task-specific acceptance scripts provide objective checks where practical. Trials without one remain ungraded until human review.
+- The committed report remains preliminary. It does not establish that the skill improves Rust task outcomes.
 
-See `results/summary.md` for actual evidence and limitations.
+See results/summary.md for the actual result state and limitations.
 
-## Run
+## Run a paired evaluation
 
-The harness expects OpenCode and its configured model provider:
+The harness requires OpenCode, a configured provider credential, and an explicit provider/model ID. EVAL_MODEL is passed to OpenCode as --model, not merely recorded as a label.
 
-```bash
-bash evals/harness/run-suite.sh 1 600
-bash evals/harness/run-suite.sh 1 600 /tmp/ratatui-skill-evals
-```
+~~~bash
+EVAL_MODEL="provider/model-id" \
+EVAL_PROVIDER="provider-name" \
+EVAL_MODEL_SETTINGS="temperature=0;reasoning=high" \
+bash evals/harness/run-suite.sh 3 600
+~~~
 
-The optional third argument selects an output directory outside the repository. Set model metadata explicitly so results remain identifiable:
+Three repetitions across ten tasks create 60 model runs: ten tasks, two conditions, and three repetitions. Use fewer repetitions for a smoke run, but do not treat one run as evidence of improvement.
 
-```bash
-EVAL_MODEL="your-model-id" EVAL_PROVIDER="your-provider" EVAL_MODEL_SETTINGS="temperature=0;reasoning=high" \
-  bash evals/harness/run-suite.sh 1 600
-```
+The optional third argument selects an output directory outside the repository:
 
-These are operator-supplied, non-secret labels; do not put API keys or credentials in them. The harness does not infer or verify provider-side settings. They are recorded in each trial's `result.json`, along with the repository commit, task-spec SHA-256, skill content hash, and expected trigger metadata.
+~~~bash
+EVAL_MODEL="provider/model-id" bash evals/harness/run-suite.sh 3 600 /tmp/ratatui-skill-evals
+~~~
 
-Run one paired task manually:
+EVAL_PROVIDER and EVAL_MODEL_SETTINGS are operator-supplied descriptive labels. They are not provider-side enforcement or automatic inspection. Keep the real settings identical between both conditions and document them. Never put credentials in task files, model labels, or result artifacts.
 
-```bash
-bash evals/harness/run-trial.sh evals/tasks/02-add-widget.md 1 /tmp/widget-skill 600
-bash evals/harness/run-trial.sh evals/tasks/02-add-widget.md 0 /tmp/widget-base 600
-```
+The suite randomizes baseline/skill order within each task repetition. It writes schedule.tsv and suite.json with the seed, schedule hash, repository commit, model metadata, and task hashes. Set EVAL_ORDER_SEED to reproduce the schedule order.
 
-A trial directory contains the prompt, generated project, stdout, stderr, and `result.json`. Preserve these artifacts. Trial and results directories must be new or empty; the harness refuses to reuse old output to avoid contaminating later trials.
+## One trial
+
+~~~bash
+EVAL_MODEL="provider/model-id" bash evals/harness/run-trial.sh evals/tasks/02-add-widget.md 1 /tmp/widget-skill 600
+EVAL_MODEL="provider/model-id" bash evals/harness/run-trial.sh evals/tasks/02-add-widget.md 0 /tmp/widget-base 600
+~~~
+
+Use identical model/provider/settings and environment values for both commands. Each trial directory contains the prompt, generated project, OpenCode event stream, text output, standard error, per-check logs, acceptance output, and result.json.
+
+## Isolation and telemetry
+
+Every trial gets a temporary HOME, XDG config/data/cache/state directories, OpenCode config directory, and OpenCode data store. The runner copies only the OpenCode authentication database or legacy auth file. It does not copy user skill directories or user OpenCode configuration, which could contaminate baseline runs. Provider API-key environment variables are inherited.
+
+The runner fails when it finds a machine-wide Ratatui skill in the known OpenCode system skill locations or a project-local skill in a baseline fixture. Trial directories and results directories must be new or empty.
+
+The agent's newline-delimited JSON events are retained. A direct root-session skill tool call naming ratatui is counted as activation. Baseline calls are counted as leakage. OpenCode does not expose all child-session tool events in its root event stream, so delegated activation is recorded as unverified, not guessed. If telemetry is unverified, the suite remains incomplete.
 
 ## Human review
 
-Automated acceptance is not a substitute for code and behavior review. Copy the template into each trial directory and complete it:
+Automated acceptance does not replace code and behavior review. Copy the template into each trial directory and complete it:
 
-```bash
+~~~bash
 cp evals/human-review-template.json /path/to/trial/human-review.json
 python3 evals/harness/summarize-results.py /path/to/results
-```
+~~~
 
-The review record must include a reviewer, ISO date, a `passed` or `failed` judgment, all ten 0-2 rubric scores, critical failures, and notes. A passing judgment with critical failures is rejected. The rubric deliberately has no universal numeric pass threshold; the reviewer must explain the judgment.
+A review record requires a reviewer, ISO date, passed or failed status, all ten 0-2 rubric scores, critical failures, and explanatory notes. A passing status with critical failures is invalid. The rubric deliberately has no universal numeric pass threshold.
 
-The summary script can be rerun after reviews are added without rerunning the agent trials. It exits 2 while acceptance or review is incomplete, and 1 when a trial fails.
-
+The summarizer can be rerun after reviews are added. It exits 2 while acceptance or review is incomplete, and 1 when a trial fails.
 
 ## Method
 
-1. Keep model, model version, provider, settings, task text, permissions, environment, and fixture commit consistent across conditions.
-2. Isolate workspaces. Do not expose the skill or repository instructions to baseline runs.
-3. Randomize execution order where practical.
-4. Run multiple trials because model output is nondeterministic. Three paired trials per task is an initial floor, not proof of statistical power.
+1. Keep model, model version, provider, actual settings, task text, permissions, environment, and fixture commit consistent across conditions.
+2. Run baseline and skill conditions in separate workspaces. The baseline must not see the skill or project instructions.
+3. Randomize execution order within each pair and retain the schedule.
+4. Run multiple repetitions because model output is nondeterministic. Three paired trials per task is an initial floor, not proof of statistical power.
 5. Use deterministic checks for objective behavior where practical.
-6. Have a human assess architecture, maintainability, usability, and visual quality using the rubric.
+6. Have a human review architecture, maintainability, usability, and visual quality using the rubric.
 7. Inspect trajectories as well as final artifacts: repository inspection, API research, unnecessary edits, recovery, verification, and skill activation.
-8. Report failed, timed-out, incomplete, and ungraded trials. Explain any exclusions from denominators.
+8. Report failed, timed-out, incomplete, ungraded, and telemetry-unknown trials. Explain any exclusions from denominators.
 
 ## Metrics
 
-Report by task and condition: completion and timeout rate; build, Clippy, and test success; automated acceptance; human scores; API/version correctness; terminal interaction and resize behavior; unnecessary complexity; token usage, latency, and cost when reliable provider measurements are available; and activation precision including negative cases.
+Report per task and condition: completion and timeout rate; format, build, Clippy, and test success; automated acceptance; human score distributions; API/version correctness; terminal interaction and resize behavior; unnecessary complexity; token usage, latency, and cost where provider measurements are reliable; and activation precision including negative cases.
 
-Keep objective checks and human judgments separate. Do not collapse all dimensions into one score without showing the underlying results.
-
-## Structure
-
-- `tasks/`: task specifications.
-- `fixtures/`: starting projects for existing-project and compatibility tasks.
-- `acceptance/`: deterministic checks.
-- `harness/`: isolated trial execution, deterministic tests, and result summarization.
-- `scoring-rubric.md`: human review criteria.
-- `human-review-template.json`: structured review record for each trial.
-- `results/`: committed preliminary artifacts and honest summaries. New trial artifacts are written outside the repository.
+Keep objective checks and human judgments separate. Do not collapse every dimension into one unqualified score.
 
 ## Limitations
 
-The harness currently supports OpenCode. Other agent integrations need separate implementation and validation. A successful process exit is not equivalent to a successful task. Trials without automated acceptance are ungraded and require human review.
+The harness currently supports OpenCode only. Other agent integrations require separate runners and runtime validation. A successful process exit is not proof of a successful task. Tasks without deterministic acceptance are ungraded until reviewed. Skill activation through child agents may remain unverified if the runtime does not expose those events.
