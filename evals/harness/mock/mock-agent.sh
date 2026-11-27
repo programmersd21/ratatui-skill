@@ -37,11 +37,41 @@ RS
     sleep 300
     ;;
   python)
-    cat > main.py <<'PY'
-import csv, statistics
-print("done")
+    cat > solution.py <<'PY'
+import csv
+import json
+import math
+import statistics
+import sys
+
+with open(sys.argv[1], newline="", encoding="utf-8") as stream:
+    rows = list(csv.DictReader(stream))
+result = {}
+for key in rows[0] if rows else []:
+    values = []
+    valid = True
+    for row in rows:
+        value = row[key].strip()
+        if not value:
+            continue
+        try:
+            number = float(value)
+        except ValueError:
+            valid = False
+            break
+        if not math.isfinite(number):
+            valid = False
+            break
+        values.append(number)
+    if valid and values:
+        result[key] = {
+            "count": len(values),
+            "mean": statistics.mean(values),
+            "median": statistics.median(values),
+            "std": statistics.pstdev(values),
+        }
+print(json.dumps(result))
 PY
-    echo "Generated Python script"
     ;;
   no-ratatui)
     mkdir -p src
@@ -59,3 +89,12 @@ RS
     echo "Generated without ratatui"
     ;;
 esac
+
+
+if [[ "${MOCK_SKILL_CALL:-0}" == 1 ]]; then
+  printf '%s\n' '{"type":"tool_use","part":{"tool":"skill","state":{"status":"completed","input":{"name":"ratatui"}}}}'
+fi
+if [[ "${MOCK_SUBAGENT_CALL:-0}" == 1 ]]; then
+  printf '%s\n' '{"type":"tool_use","part":{"tool":"task","state":{"status":"completed","input":{"description":"delegate implementation"}}}}'
+fi
+printf '%s\n' '{"type":"text","part":{"type":"text","text":"Mock agent completed"}}'
