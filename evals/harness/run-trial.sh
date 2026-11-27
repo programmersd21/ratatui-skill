@@ -12,11 +12,13 @@ TASK_FILE="${1:?task file required}"
 WITH_SKILL="${2:?0 or 1}"
 TRIAL_DIR="${3:?trial dir required}"
 TIMEOUT="${4:-600}"
+CHECK_TIMEOUT="${EVAL_CHECK_TIMEOUT:-300}"
 EVAL_MODEL="${EVAL_MODEL:-}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd -P)"
 [[ "$WITH_SKILL" == 0 || "$WITH_SKILL" == 1 ]] || { echo "WITH_SKILL must be 0 or 1" >&2; exit 2; }
 [[ "$TIMEOUT" =~ ^[1-9][0-9]*$ ]] || { echo "TIMEOUT must be a positive integer" >&2; exit 2; }
+[[ "$CHECK_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || { echo "EVAL_CHECK_TIMEOUT must be a positive integer" >&2; exit 2; }
 [[ -n "$EVAL_MODEL" ]] || { echo "Set EVAL_MODEL to an explicit provider/model ID." >&2; exit 2; }
 TASK_FILE="$(cd "$(dirname "$TASK_FILE")" && pwd -P)/$(basename "$TASK_FILE")"
 [[ -f "$TASK_FILE" ]] || { echo "task file not found" >&2; exit 2; }
@@ -260,21 +262,28 @@ fi
 
 # Collect results based on language.
 COMPILE_OK=false
+FMT_OK=false
 CLIPPY_OK=false
 TEST_OK=false
 HAS_RATATUI=false
 FILES_GENERATED=0
+mkdir -p "$TRIAL_DIR/checks"
+
+run_check() {
+  local name="$1"
+  shift
+  if timeout "$CHECK_TIMEOUT" "$@" > "$TRIAL_DIR/checks/$name.log" 2>&1; then
+    printf 'true'
+  else
+    printf 'false'
+  fi
+}
 
 if [ "$TASK_LANG" = "rust" ]; then
-  if cargo build --manifest-path "$PROJECT/Cargo.toml" >/dev/null 2>&1; then
-    COMPILE_OK=true
-  fi
-  if cargo clippy --manifest-path "$PROJECT/Cargo.toml" --all-targets -- -D warnings >/dev/null 2>&1; then
-    CLIPPY_OK=true
-  fi
-  if cargo test --manifest-path "$PROJECT/Cargo.toml" >/dev/null 2>&1; then
-    TEST_OK=true
-  fi
+  FMT_OK="$(run_check fmt cargo fmt --manifest-path "$PROJECT/Cargo.toml" --check)"
+  COMPILE_OK="$(run_check build cargo build --manifest-path "$PROJECT/Cargo.toml")"
+  CLIPPY_OK="$(run_check clippy cargo clippy --manifest-path "$PROJECT/Cargo.toml" --all-targets -- -D warnings)"
+  TEST_OK="$(run_check test cargo test --manifest-path "$PROJECT/Cargo.toml")"
   if grep -q ratatui "$PROJECT/Cargo.toml" 2>/dev/null; then
     HAS_RATATUI=true
   fi
@@ -297,10 +306,10 @@ if [ -x "$ACCEPTANCE_SCRIPT" ]; then
 fi
 
 # Write result using Python for valid JSON.
-python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$REPO_COMMIT" "$TASK_HASH" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$TASK_FIXTURE" "$TASK_TRIGGER" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" "$TELEMETRY" <<'PY'
+python3 - "$TRIAL_DIR" "$TASK_FILE" "$WITH_SKILL" "$REPO_COMMIT" "$TASK_HASH" "$EXIT_STATUS" "$TIMED_OUT" "$ELAPSED" "$SKILL_HASH" "$SKILL_INJECTED" "$SKILL_ACTIVATED" "$SKILL_LEAKED" "$FMT_OK" "$COMPILE_OK" "$CLIPPY_OK" "$TEST_OK" "$HAS_RATATUI" "$FILES_GENERATED" "$TASK_LANG" "$TASK_FIXTURE" "$TASK_TRIGGER" "$ACCEPTANCE_PASS" "$ACCEPTANCE_DETAILS" "$TELEMETRY" <<'PY'
 import json, sys, os
 (trial_dir, task, with_skill, repository_commit, task_hash, exit_status, timed_out, elapsed, skill_hash, injected,
- activated, leaked, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, fixture, expected_trigger, acceptance, details, telemetry_json) = sys.argv[1:]
+ activated, leaked, fmt_ok, compile_ok, clippy_ok, test_ok, has_ratatui, files, lang, fixture, expected_trigger, acceptance, details, telemetry_json) = sys.argv[1:]
 telemetry = json.loads(telemetry_json)
 result = {
     "task": os.path.basename(task),
@@ -339,7 +348,7 @@ with open(os.path.join(trial_dir, "result.json"), "w") as f:
 print(json.dumps(result, indent=2))
 # A trial is successful only when the agent, required language checks, and acceptance checks pass.
 failed = int(exit_status) != 0 or timed_out == "true" or acceptance == "false"
-if lang == "rust" and (compile_ok != "true" or clippy_ok != "true" or test_ok != "true"):
+if lang == "rust" and (fmt_ok != "true" or compile_ok != "true" or clippy_ok != "true" or test_ok != "true"):
     failed = True
 sys.exit(1 if failed else 0)
 PY
