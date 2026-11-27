@@ -34,7 +34,7 @@ Screenshot target/betamax/dirview-help.png
 State target/betamax/dirview-help.json
 Sleep 500ms
 
-Esc
+Escape
 Wait+Screen "items"
 Resize 50 16
 Wait+Screen "items"
