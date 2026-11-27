@@ -548,6 +548,30 @@ mod tests {
     }
 
     #[test]
+    fn large_directory_preview_runs_in_the_background() -> Result {
+        let fx = Fixture::new("async-preview")?;
+        let large = fx.0.join("large");
+        std::fs::create_dir(&large)?;
+        for index in 0..50_000 {
+            std::fs::write(large.join(format!("entry-{index:05}")), [])?;
+        }
+
+        let mut state = fx.state()?;
+        state.update(Action::MoveDown);
+        assert!(matches!(state.preview(), Preview::Loading));
+        wait_for_preview(&mut state)?;
+
+        match state.preview() {
+            Preview::Dir { names, total } => {
+                assert_eq!(*total, 50_000);
+                assert_eq!(names.len(), 200);
+            }
+            other => panic!("expected completed directory preview, got {other:?}"),
+        }
+        Ok(())
+    }
+
+    #[test]
     fn missing_directory_is_an_error_not_a_panic() {
         assert!(State::open(PathBuf::from("/definitely/not/here")).is_err());
     }
