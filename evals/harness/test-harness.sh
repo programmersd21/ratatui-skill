@@ -5,6 +5,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 MOCK="$ROOT/evals/harness/mock/mock-agent.sh"
 export EVAL_MODEL="mock-model"
+export EVAL_MODEL="mock-model"
 
 TASK="$TMP/python-task.md"
 cat > "$TASK" <<'TASK'
@@ -63,7 +64,32 @@ MOCK_SUBAGENT_CALL=1 MOCK_BEHAVIOR=python OPENCODE_BIN="$MOCK" bash "$ROOT/evals
 python3 - "$TMP/subagent/result.json" <<'PY'
 import json, pathlib, sys
 data = json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert data["skill_activated"] == "false"
+assert data["skill_leaked"] == "not_applicable"
+PY
+
+
+MOCK_SKILL_CALL=1 MOCK_BEHAVIOR=python OPENCODE_BIN="$MOCK" bash "$ROOT/evals/harness/run-trial.sh" "$ROOT/evals/tasks/10-no-trigger.md" 1 "$TMP/skill-activation" 10 >/dev/null
+python3 - "$TMP/skill-activation/result.json" <<'PY'
+import json, pathlib, sys
+data = json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert data["skill_activated"] == "true"
+assert data["skill_tool_calls"] == 1
+PY
+
+MOCK_SKILL_CALL=1 MOCK_BEHAVIOR=python OPENCODE_BIN="$MOCK" bash "$ROOT/evals/harness/run-trial.sh" "$ROOT/evals/tasks/10-no-trigger.md" 0 "$TMP/skill-leak" 10 >/dev/null
+python3 - "$TMP/skill-leak/result.json" <<'PY'
+import json, pathlib, sys
+data = json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert data["skill_leaked"] == "true"
+PY
+
+MOCK_SUBAGENT_CALL=1 MOCK_BEHAVIOR=python OPENCODE_BIN="$MOCK" bash "$ROOT/evals/harness/run-trial.sh" "$ROOT/evals/tasks/10-no-trigger.md" 1 "$TMP/subagent" 10 >/dev/null
+python3 - "$TMP/subagent/result.json" <<'PY'
+import json, pathlib, sys
+data = json.loads(pathlib.Path(sys.argv[1]).read_text())
 assert data["skill_activated"] == "unverified"
+assert data["subagent_tool_calls"] == 1
 PY
 
 mkdir -p "$TMP/bin"
@@ -115,6 +141,10 @@ cat > "$TMP/summary/python-skill0-trial1/result.json" <<'RESULT'
   "exit_status": 0,
   "timed_out": false,
   "task_language": "python",
+  "with_skill": false,
+  "expected_skill_trigger": "no",
+  "skill_activated": "false",
+  "skill_leaked": "false",
   "acceptance_pass": "true"
 }
 RESULT

@@ -99,6 +99,8 @@ def main():
     human_failed = 0
     human_pending = 0
     human_invalid = 0
+    activation_unverified = 0
+    activation_mismatch = 0
 
     for trial_dir in trial_dirs:
         result_path = trial_dir / "result.json"
@@ -124,6 +126,28 @@ def main():
             print(f"FAIL  {trial_dir.name}: invalid execution status fields")
         if result.get("exit_status") != 0 or result.get("timed_out") is True:
             trial_failed = True
+
+        activated = result.get("skill_activated")
+        leaked = result.get("skill_leaked")
+        expected_trigger = result.get("expected_skill_trigger")
+        with_skill = result.get("with_skill")
+        if activated not in {"true", "false", "unverified"} or type(with_skill) is not bool:
+            trial_failed = True
+            activation_unverified += 1
+        elif with_skill and expected_trigger in {"yes", "no"}:
+            if activated == "unverified":
+                activation_unverified += 1
+            elif (expected_trigger == "yes" and activated == "false") or (expected_trigger == "no" and activated == "true"):
+                activation_mismatch += 1
+                trial_failed = True
+        if with_skill is False:
+            if leaked == "unverified":
+                activation_unverified += 1
+            elif leaked == "true":
+                activation_mismatch += 1
+                trial_failed = True
+            elif leaked != "false":
+                trial_failed = True
         if acceptance == "false":
             trial_failed = True
         if result.get("task_language") == "rust":
@@ -167,12 +191,14 @@ def main():
     print(f"Human reviews failed: {human_failed}")
     print(f"Human reviews pending: {human_pending}")
     print(f"Human reviews invalid: {human_invalid}")
+    print(f"Activation telemetry unverified: {activation_unverified}")
+    print(f"Activation mismatches or baseline leaks: {activation_mismatch}")
     print(f"Failed trials: {failed}")
 
     if failed > 0:
         print("SUITE FAILED: at least one trial failed an automated or human check")
         return 1
-    if acceptance_unverified > human_passed or human_pending > 0 or human_invalid > 0:
+    if acceptance_unverified > human_passed or human_pending > 0 or human_invalid > 0 or activation_unverified > 0:
         print("SUITE INCOMPLETE: trials still need automated acceptance or valid human review")
         return 2
     print("SUITE COMPLETE: automated checks and human reviews are recorded")
