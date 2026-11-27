@@ -86,10 +86,16 @@ fn spawn_preview_worker() -> (Sender<PreviewJob>, Receiver<(u64, Preview)>) {
             if job.cancelled.load(AtomicOrdering::Relaxed) {
                 continue;
             }
-            if let Some(preview) = fs::preview_cancellable(&job.path, job.kind, &job.cancelled) {
-                if !job.cancelled.load(AtomicOrdering::Relaxed) {
-                    let _ = result_tx.send((job.request, preview));
-                }
+            let Some(preview) =
+                fs::preview_cancellable(&job.path, job.kind, &job.cancelled)
+            else {
+                continue;
+            };
+            if job.cancelled.load(AtomicOrdering::Relaxed) {
+                continue;
+            }
+            if result_tx.send((job.request, preview)).is_err() {
+                break;
             }
         }
     });

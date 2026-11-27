@@ -85,6 +85,7 @@ fn entry_is_dir(entry: &std::fs::DirEntry) -> io::Result<bool> {
     }
 }
 
+#[cfg(test)]
 fn dir_preview(path: &Path) -> Preview {
     let cancelled = AtomicBool::new(false);
     dir_preview_cancellable(path, &cancelled).unwrap_or(Preview::Empty)
