@@ -14,7 +14,7 @@ Set CursorBlink false
 Set WaitTimeout 30s
 
 Hide
-Type@0ms "cd \"$BETAMAX_WORKING_DIRECTORY\""
+Type@0ms "cd \"$BETAMAX_WORKING_DIRECTORY\" && mkdir -p target/betamax"
 Enter
 Wait
 Show
@@ -34,7 +34,13 @@ Screenshot target/betamax/dirview-help.png
 State target/betamax/dirview-help.json
 Sleep 500ms
 
-Type "Esc"
+Esc
+Wait+Screen "items"
+Resize 50 16
+Wait+Screen "items"
+Screenshot target/betamax/dirview-narrow.png
+State target/betamax/dirview-narrow.json
+Resize 120 40
 Wait+Screen "items"
 Type "q"
 Enter

@@ -34,3 +34,12 @@ jobs:
         with:
           tapes: tapes/**/*.tape
           formats: gif,png
+
+      - name: Upload Betamax failure bundles
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: betamax-failure-bundles
+          path: target/betamax-failures
+          if-no-files-found: ignore
+          retention-days: 7
