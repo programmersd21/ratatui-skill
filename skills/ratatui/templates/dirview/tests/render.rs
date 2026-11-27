@@ -90,6 +90,7 @@ fn binary_file_is_not_dumped() -> Result {
     let fx = Fixture::new("binary")?;
     let mut state = State::open(fx.0.clone())?;
     state.update(Action::MoveDown);
+    wait_for_preview(&mut state)?;
     let text = screen(&state, 100, 20)?;
     assert!(text.contains("binary file"), "{text}");
     Ok(())
