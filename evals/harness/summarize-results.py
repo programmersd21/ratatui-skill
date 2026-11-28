@@ -76,6 +76,14 @@ def main():
             return 2
 
     root = pathlib.Path(sys.argv[1]).resolve()
+    if expected_trials is None:
+        metadata = read_json(root / "suite.json")
+        if isinstance(metadata, dict) and "expected_trials" in metadata:
+            recorded = metadata["expected_trials"]
+            if type(recorded) is not int or recorded < 0:
+                print("suite.json has an invalid expected_trials value", file=sys.stderr)
+                return 2
+            expected_trials = recorded
     if not root.is_dir():
         print(f"results directory not found: {root}", file=sys.stderr)
         return 2
@@ -135,10 +143,10 @@ def main():
         if activated not in {"true", "false", "unverified"} or type(with_skill) is not bool:
             trial_failed = True
             activation_is_unverified = True
-        elif with_skill and expected_trigger in {"yes", "no"}:
+        elif with_skill:
             if activated == "unverified":
                 activation_is_unverified = True
-            elif (expected_trigger == "yes" and activated == "false") or (expected_trigger == "no" and activated == "true"):
+            elif expected_trigger in {"yes", "no"} and ((expected_trigger == "yes" and activated == "false") or (expected_trigger == "no" and activated == "true")):
                 activation_mismatch += 1
                 trial_failed = True
         if with_skill is False:
