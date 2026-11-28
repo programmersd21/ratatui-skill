@@ -78,7 +78,7 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
 
 | Without the skill | With it |
 |---|---|
-| Versions and APIs written from memory | Newest stable versions looked up and quoted, release notes read, uncertain calls compiled |
+| Versions and APIs written from memory | Resolved versions and project constraints checked; release notes reviewed when versions or recent APIs change |
 | Design choices are implicit | Layout and interactions follow the requirements and displayed data; document decisions when complexity warrants it |
 | Decorative panels, fake data, dead keys | Everything visible works |
 | Structure chosen without considering scope | Clear state/rendering boundaries and shared key bindings where they reduce coupling or duplication |
