@@ -28,4 +28,4 @@ Research checked: 27 November 2026.
 
 This catalogue is a source map, not a systematic survey of Ratatui applications. It supports the scoped engineering guidance above; it does not prove that the ratatui-skill improves model-generated applications.
 
-That claim requires controlled paired trials with the same model, provider, settings, task text, fixtures, and permissions; multiple repetitions; inspectable agent trajectories; deterministic acceptance checks; and human review. No such complete comparison is claimed by this PR.
+This repository makes no measured effectiveness claim. Controlled paired trials are an optional research method for anyone who wants to investigate that question; they are not a prerequisite for using the skill or contributing code.
