@@ -30,6 +30,7 @@ Do not copy the starter template into an existing application.
 The bundled helper compares registry releases with versions resolved by a project:
 
 ```bash
+SKILL_DIR="/path/to/installed/ratatui"
 $SKILL_DIR/scripts/crate-versions.sh ratatui crossterm unicode-width
 $SKILL_DIR/scripts/crate-versions.sh --manifest path/to/Cargo.toml ratatui crossterm
 ```
@@ -104,12 +105,14 @@ Use `--manifest-path` or package selection for workspaces and scoped changes. Do
 The bundled PTY helper is available when a real terminal smoke test is useful:
 
 ```bash
+SKILL_DIR="/path/to/installed/ratatui"
 $SKILL_DIR/scripts/pty-smoke.py PATH/TO/BINARY
 ```
 
 Use its app-specific options as needed. The style scanner is heuristic, not a correctness analyzer:
 
 ```bash
+SKILL_DIR="/path/to/installed/ratatui"
 $SKILL_DIR/scripts/lint-slop.sh PROJECT_DIR
 ```
 
