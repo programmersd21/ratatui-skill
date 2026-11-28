@@ -49,6 +49,7 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
 
    ```bash
    mkdir -p /path/to/project/.agents/skills
+   rm -rf /path/to/project/.agents/skills/ratatui
    cp -a skills/ratatui /path/to/project/.agents/skills/ratatui
    ```
 
@@ -56,6 +57,7 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
 
    ```bash
    mkdir -p /path/to/project/.claude/skills
+   rm -rf /path/to/project/.claude/skills/ratatui
    cp -a skills/ratatui /path/to/project/.claude/skills/ratatui
    ```
 
