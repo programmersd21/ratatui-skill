@@ -38,6 +38,7 @@ For Codex, Cursor, Antigravity, and OpenCode:
 
 ```bash
 mkdir -p /path/to/project/.agents/skills
+rm -rf /path/to/project/.agents/skills/ratatui
 cp -a skills/ratatui /path/to/project/.agents/skills/ratatui
 ```
 
@@ -45,6 +46,7 @@ cp -a skills/ratatui /path/to/project/.agents/skills/ratatui
 
 ```bash
 mkdir -p /path/to/project/.claude/skills
+rm -rf /path/to/project/.claude/skills/ratatui
 cp -a skills/ratatui /path/to/project/.claude/skills/ratatui
 ```
 
@@ -52,6 +54,7 @@ cp -a skills/ratatui /path/to/project/.claude/skills/ratatui
 
 ```bash
 mkdir -p /path/to/project/.opencode/skills
+rm -rf /path/to/project/.opencode/skills/ratatui
 cp -a skills/ratatui /path/to/project/.opencode/skills/ratatui
 ```
 
@@ -61,6 +64,7 @@ For a user-level install, replace the project directory above with the global pa
 
 ```bash
 mkdir -p ~/.agents/skills
+rm -rf ~/.agents/skills/ratatui
 cp -a skills/ratatui ~/.agents/skills/ratatui
 ```
 
