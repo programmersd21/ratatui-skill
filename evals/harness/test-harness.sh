@@ -182,6 +182,40 @@ if grep -nE '(^|[;&|[:space:]])eval[[:space:]]' "$ROOT/evals/acceptance/"*.sh; t
   echo "unsafe eval remains in acceptance scripts" >&2
   exit 1
 fi
+
+mkdir -p "$TMP/summary-suite/python-skill0-trial1"
+cp "$TMP/summary/python-skill0-trial1/result.json" "$TMP/summary-suite/python-skill0-trial1/result.json"
+cp "$TMP/summary/python-skill0-trial1/human-review.json" "$TMP/summary-suite/python-skill0-trial1/human-review.json"
+printf '{"expected_trials":2}\\n' > "$TMP/summary-suite/suite.json"
+if python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary-suite" >/dev/null 2>&1; then
+  echo "summary ignored the recorded suite trial count" >&2
+  exit 1
+else
+  status=$?
+  [ "$status" -eq 1 ] || exit "$status"
+fi
+
+mkdir -p "$TMP/summary-telemetry/skill-skill1-trial1"
+cat > "$TMP/summary-telemetry/skill-skill1-trial1/result.json" <<'RESULT'
+{
+  "exit_status": 0,
+  "timed_out": false,
+  "task_language": "python",
+  "with_skill": true,
+  "expected_skill_trigger": null,
+  "skill_activated": "unverified",
+  "skill_leaked": "not_applicable",
+  "acceptance_pass": "true"
+}
+RESULT
+cp "$TMP/summary/python-skill0-trial1/human-review.json" "$TMP/summary-telemetry/skill-skill1-trial1/human-review.json"
+if python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary-telemetry" >/dev/null 2>&1; then
+  echo "summary accepted unknown skill activation telemetry" >&2
+  exit 1
+else
+  status=$?
+  [ "$status" -eq 2 ] || exit "$status"
+fi
 echo "Harness tests passed."
  "$TMP/fixture/project/Cargo.toml"
 test -f "$TMP/fixture/project/src/keymap.rs"
