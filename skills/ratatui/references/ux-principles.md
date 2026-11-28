@@ -1,215 +1,145 @@
-# TUI design principles
+# TUI design guidance
 
-Drawn from lazygit's published design principles (discoverability, simplicity, safety, power, speed) and from terminal design systems that agree on spatial consistency, keyboard-first input, layered color, and a UI that never freezes. Where a rule below is this skill's own judgment rather than something those sources say, it is marked **(judgment)**.
+This document contains design heuristics for terminal interfaces, not Ratatui requirements. Product requirements, user expectations, existing project conventions, terminal capabilities, and accessibility needs take precedence.
+
+The examples describe common patterns. Combine, adapt, or ignore them when the application calls for something else.
+
+## Classification
+
+- **Correctness:** behavior the application must preserve, such as terminal restoration, safe text handling, responsive input, and accurate information.
+- **Recommended:** patterns that often improve usability, but have legitimate exceptions.
+- **Optional:** visual and interaction choices that depend on the product.
+
+Do not turn an optional preference into a hard requirement in a new or existing project.
 
 ## Layout
 
-Pick one archetype and keep it.
+Choose a layout from the interaction model and the information users need.
 
-| Archetype | Use when | Example |
+| Pattern | Often useful when | Example |
 |---|---|---|
-| List + preview | One collection, details of the selected item | file browser, log viewer |
-| Multi-panel | Several related collections the user moves between | lazygit |
-| Drill-down | Hierarchy where depth matters, one level at a time | settings, k8s resources |
-| Miller columns | Hierarchy where seeing the parents helps | ranger |
-| Dashboard | Glanceable live numbers, little input | system monitor |
-| Header + list | One collection, nothing else | process picker |
-| Popup / overlay | A short question or a help screen over any of the above | confirm, `?` |
+| List + preview | One collection with details for a selected item | File browser, log viewer |
+| Multi-panel | Users move among several related collections | Git client |
+| Drill-down | Hierarchical navigation where depth matters | Settings, resource browser |
+| Miller columns | Users benefit from seeing hierarchy and parents | File manager |
+| Dashboard | Users monitor a small set of changing values | System monitor |
+| Header + list | One collection is the main task | Process picker |
+| Popup / overlay | A short decision or contextual help belongs above the current screen | Confirmation, help |
 
-Rules:
+### Useful layout heuristics
 
-- **A fixed skeleton.** Header, body, footer stay where they are. Panels do not move unless the user asks.
-- **Responsive by dropping, not squashing.** Below a width, remove the preview pane; below a minimum size, show "terminal too small" with the needed size.
-- **Borders group, whitespace separates.** One border style. No box inside a box.
-- **Lists show only the rows on screen** and keep the selection visible with minimal scrolling.
+- Keep primary content visually stable when that helps spatial memory; let layouts change when mode or available space requires it.
+- Prefer dropping secondary information or panes over compressing important content into unreadable widths.
+- Use borders to group related content and whitespace to separate it. Nested borders are a visual choice, not inherently wrong.
+- Render only visible rows when rendering the full dataset would be expensive.
+- Keep selection visible when navigation depends on it.
+- Choose breakpoints from the content's minimum useful dimensions, not from a universal 40/80-column rule.
 
-## Keys
+## Keyboard and interaction
 
-- **Keyboard complete.** Every action has a key. Mouse is optional; if something looks clickable it must work **(judgment: prefer none over fake)**.
-- **Three tiers of discovery:** footer hints for the current mode, `?` overlay for everything, README for the rest. Generate the first two from the keymap so they cannot drift.
-- **Vim-style plus arrows** (`j k h l g G`, Ctrl-u/d) unless the domain says otherwise. Keep `/` for filter, `?` for help, `q` and Ctrl-C to quit, Esc to cancel.
-- **Never reassign standard keys** to something surprising.
-- **Modes are visible.** The footer changes with the mode; a text prompt shows a cursor.
-- **Fewest keypresses for the common path.**
+Keyboard-first interaction is a strong default for TUIs, but the correct bindings depend on the domain and audience.
 
-## Color
+- Make important actions discoverable through context hints, help, documentation, or clear labels.
+- Keep key behavior, footer hints, and help text consistent when they share bindings. A shared binding table can help when it reduces duplication.
+- Vim-style bindings and arrow keys are both common. Support the conventions appropriate to the application; do not impose one set on every project.
+- Preserve familiar terminal conventions when possible, but do not sacrifice a required domain interaction to follow a generic key map.
+- Make the current mode or focus visible when it changes how input is interpreted.
+- Ensure important functionality is reachable without a mouse when the application is intended to be keyboard-driven.
+- Do not advertise a key or control that does nothing.
+- Esc is often useful for backing out or cancelling, but its exact behavior should be clear and consistent.
 
-Design in three layers:
+A help overlay, footer hints, and mode-specific key tables are useful patterns, not mandatory components for every small utility.
 
-1. **Monochrome works.** Bold, dim and reverse carry the meaning. This is also the `NO_COLOR` theme.
-2. **16 ANSI colors look right.** They follow the user's terminal palette, so the app fits their setup.
-3. **True color is an opt-in extra,** never the only way things are readable.
+## Color and visual hierarchy
 
-Define colors **by role** (`text`, `muted`, `accent`, `selected`, `error`) in one file. Use one accent. Do not force a background. Neon palettes are a legitimate theme but they are the look people recognize as generated, so make them opt-in **(judgment)**.
+Design for the terminal environments the application actually supports.
 
-## Responsiveness
+- Do not rely on color alone to communicate an important state.
+- Maintain readable contrast and a clear distinction between selected, focused, disabled, and normal content.
+- Respect `NO_COLOR` when the application claims to support it.
+- A role-based theme can make colors easier to maintain. A single theme module is useful when several components share semantic styles; a smaller app may not need a separate theme abstraction.
+- The user's terminal palette, ANSI colors, true color, and monochrome output are all valid choices within the product's compatibility goals.
+- One accent color, a restrained palette, and consistent border styles are useful defaults, not universal rules.
+- Avoid forced backgrounds when terminal transparency is part of the intended experience.
 
-- Never freeze the UI. Slow work runs elsewhere and reports progress.
-- Esc always returns control.
-- Startup is fast; do the minimum before the first frame.
-- Handle resize without panics, at every size including 1x1.
+## Responsiveness and performance
 
-## Safety
+### Correctness requirements
 
-- Destructive actions confirm, and the confirmation says what will be lost.
-- Show errors with their reason and keep the previous state usable.
-- Treat all external text as hostile: strip control characters before drawing.
+- Do not perform unbounded or avoidable blocking work in the draw path when it prevents input or redraws.
+- Do not leave the terminal in an unusable state after normal errors or shutdown.
+- Handle resize events without panicking in the dimensions the application claims to support.
+- Sanitize untrusted text before writing it to the terminal so embedded control sequences cannot manipulate the display.
+- Measure strings by terminal display width when alignment or truncation depends on columns.
 
-## States every screen needs
+### Recommended techniques
 
-| State | Show |
+- Keep expensive work bounded, cached, incremental, or off the draw path when measurements or expected workload justify it.
+- Preserve useful state across resize when possible.
+- Prefer vertical scrolling over horizontal scrolling when it fits the data.
+- Show progress for genuinely long-running operations.
+- Test small terminal sizes that are relevant to the application. A 1x1 terminal can be a useful stress case, but an application may explicitly define a larger minimum usable size.
+
+Do not introduce async tasks, worker threads, caches, or complex rendering abstractions without a concrete need.
+
+## States and feedback
+
+Consider which states can actually occur:
+
+| State | Useful feedback |
 |---|---|
-| Empty | Why it is empty and what to do about it |
-| Loading | That work is happening, with progress if known |
-| Error | The reason, in plain words |
-| Too small | The size needed and the size you have |
-| No results (filtered) | The filter text, so the user can see why |
+| Empty | Explain why there is no content and what action is available |
+| Loading | Indicate that work is in progress; show progress when it is known |
+| Error | Give a useful reason and a recovery path |
+| No filter results | Make the active filter visible and explain that nothing matched |
+| Too small | Explain the minimum useful dimensions when the layout cannot work |
+| Success | Confirm meaningful operations without inventing status |
 
-## Semantic design tokens (terminal-native)
+Not every screen needs every state. Do not add loading indicators to operations that complete immediately or confirmation messages for actions whose result is already obvious.
 
-Tokens are role names, not colors. The theme maps each role to a style. Default
-to the 16 ANSI colors so the user's palette applies; monochrome keeps bold, dim
-and reverse video.
+For destructive actions, use confirmation, undo, trash, or another safeguard proportionate to the consequences. Do not add confirmation to every action.
 
-### Foreground roles
+## Architecture and design tokens
 
-- `text.primary`: main content.
-- `text.secondary`: supporting information.
-- `text.subtle`: metadata, timestamps, hints.
-- `text.disabled`: inactive or unavailable items.
+A small style struct, a theme module, or semantic role names can all work. Choose the smallest approach that avoids duplicated or inconsistent styling.
 
-### Accent
+Semantic roles such as `text.primary`, `text.secondary`, `accent`, `state.error`, `selection`, and `border.focus` can clarify intent in larger interfaces. They do not require a formal design-token framework.
 
-- `accent.primary`: one restrained accent for the most important emphasis.
-- `accent.focus`: focus indicator, usually the same as primary.
-
-### Semantic states
-
-- `state.success`: only for genuine success.
-- `state.warning`: only for genuine warnings.
-- `state.danger`: only for genuine errors or destructive actions.
-- `state.info`: only for neutral informational status.
-
-### Selection
-
-- `selection.foreground` and `selection.background`, or reverse video as a
-  fallback on terminals without color.
-
-### Borders
-
-- `border.default`: normal panel borders.
-- `border.subtle`: dividers and separators.
-- `border.focus`: focused pane border.
-
-### Typography roles
-
-- `type.title`: screen or panel title.
-- `type.section`: section header.
-- `type.body`: normal content.
-- `type.secondary`: supporting text.
-- `type.emphasis`: highlighted inline text.
-
-Terminals do not provide arbitrary font weights. Use bold, dim and normal
-intensity only.
-
-### Spacing scale (cell units)
-
-- `space.none`: 0 cells.
-- `space.xs`: 1 cell.
-- `space.sm`: 2 cells.
-- `space.md`: 4 cells.
-- `space.lg`: 8 cells.
-
-Use these consistently. No arbitrary padding values.
-
-### Layout regions
-
-- `layout.header`: one row, title and summary.
-- `layout.content`: fills remaining space.
-- `layout.footer`: one row, hints or prompt.
-- `layout.gutter`: 1-2 cells between panes.
-
-### Interaction states
-
-- `interaction.normal`: default.
-- `interaction.focused`: has keyboard focus.
-- `interaction.selected`: currently selected item.
-- `interaction.disabled`: cannot be acted on.
-
-Selection and focus must not be confused. A selected item in an unfocused pane
-looks different from a focused item.
-
-## Visual hierarchy rules
-
-1. Primary content dominates. Metadata is subtle.
-2. One accent color. Secondary information is dim, not a second color.
-3. Borders group; whitespace separates. One border style.
-4. No box inside a box.
-5. No forced background. Terminal transparency survives.
-6. Color is never the only signal. Bold, dim and reverse carry meaning.
-7. Every visible element earns its place. If it can be removed without losing
-   information, remove it.
-
-## Terminal-native geometry
-
-- The cell is the unit. Everything is measured in columns and rows.
-- Measure text with `unicode-width`. CJK characters occupy two cells.
-- Truncate with an ellipsis, never clip silently.
-- Below the minimum size, show a message with the required and actual dimensions.
-- Drop secondary panes instead of crushing everything.
-- Prefer vertical scrolling over horizontal scrolling.
+Likewise, spacing scales and named layout regions can improve consistency when a project has many screens. Do not force a fixed spacing scale, token taxonomy, or module structure onto a small application.
 
 ## Component patterns
 
-### Header
+These are starting points, not recipes:
 
-One row. Title on the left, summary on the right. No border.
+- **Header:** useful for a title, current location, or summary. Omit it if it duplicates information.
+- **Footer:** useful for contextual shortcuts or status. Keep it compact.
+- **List row:** emphasize the primary label; include metadata only when it helps a decision.
+- **Selected item:** use a treatment visible in the application's supported color modes.
+- **Focused pane:** distinguish focus from selection when both concepts exist.
+- **Help view:** list the actions relevant to the current interaction model.
+- **Empty state:** explain the absence of content and the next useful action.
+- **Error state:** preserve context and provide a useful recovery path when possible.
+- **Confirmation:** name the consequences and avoid making the destructive action the default.
 
-### Footer
+## Motion
 
-One row. Contextual key hints that change with mode. Filter prompt shows a
-cursor. Status messages use `text.subtle` for success, `state.danger` for errors.
+Motion is optional in terminal interfaces.
 
-### List row
+- Never let decorative animation delay input.
+- Animate only when it communicates meaningful progress or state.
+- Keep important information available without animation.
+- Prefer stable, readable output over movement added only for novelty.
 
-Checkbox or icon, then text, then optional metadata right-aligned. Truncate the
-text, never the metadata.
+## Review questions
 
-### Selected row
+- Is the primary task clear?
+- Does the layout reflect the actual information and interaction model?
+- Are important actions discoverable and functional?
+- Can users distinguish focus, selection, and status?
+- Does the application behave well at its supported terminal sizes?
+- Are errors useful and is recovery possible?
+- Is color used appropriately for the supported terminals?
+- Does every panel or indicator provide useful information?
+- Is any complexity or decoration present only because a template suggested it?
 
-Reverse video or a distinct background. Must be visible in monochrome.
-
-### Focused pane
-
-Border changes from `border.default` to `border.focus`. Only one pane is focused
-at a time.
-
-### Help overlay
-
-Generated from the keymap. Shows all bindings grouped by mode. Closes with Esc,
-? or q. Must fit or scroll at 40x8.
-
-### Empty state
-
-Say why it is empty and what to do. Centered, muted.
-
-### Error state
-
-Show the reason in plain words. Keep the previous state usable.
-
-### Too-small state
-
-Show required and actual dimensions. Centered.
-
-### Confirmation prompt
-
-Name what will be lost. Offer y/n or the specific keys. Never default to
-destructive.
-
-## Motion principles
-
-- No animation that delays keyboard input.
-- No decorative movement.
-- Use animation only to communicate real state or progress.
-- Provide stable non-animated behavior.
-- A static interface with excellent hierarchy beats a noisy animated one.
+A deliberate interface is one in which each decision has a reason. It does not have to look like any single visual system.

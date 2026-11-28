@@ -1,16 +1,49 @@
 #!/usr/bin/env bash
-# Acceptance checks for Eval 10: Python task that should NOT trigger skill
-set -uo pipefail
+set -Eeuo pipefail
 PROJECT="${1:?project dir required}"
-FAIL=0
-check() {
-  local label="$1"
-  shift
-  if "$@"; then echo "PASS: $label"; else echo "FAIL: $label"; FAIL=$((FAIL+1)); fi
-}
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
 
-if [[ ! -f "$PROJECT/Cargo.toml" ]] || ! grep -qi ratatui "$PROJECT/Cargo.toml"; then echo "PASS: no ratatui dependency"; else echo "FAIL: no ratatui dependency"; FAIL=$((FAIL+1)); fi
-if ! grep -rl ratatui "$PROJECT" --include='*.rs' 2>/dev/null | grep -q .; then echo "PASS: no rust files with ratatui"; else echo "FAIL: no rust files with ratatui"; FAIL=$((FAIL+1)); fi
-check "python files exist" find "$PROJECT" -name '*.py' -print -quit | grep -q .
+test -f "$PROJECT/solution.py"
+python3 -m py_compile "$PROJECT/solution.py"
 
-exit "$FAIL"
+cat > "$TMP/input.csv" <<'CSV'
+A,B,C,Name,Empty
+1,2,,alpha,
+3,4,5,beta,
+,6,7,gamma,
+CSV
+
+python3 "$PROJECT/solution.py" "$TMP/input.csv" > "$TMP/output.json"
+python3 - "$TMP/output.json" <<'PY'
+import json
+import math
+import pathlib
+import sys
+
+data = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert set(data) == {"A", "B", "C"}
+assert data["A"]["count"] == 2
+assert data["A"]["mean"] == 2
+assert data["A"]["median"] == 2
+assert math.isclose(data["A"]["std"], 1)
+assert data["B"]["count"] == 3
+assert data["B"]["mean"] == 4
+assert data["B"]["median"] == 4
+assert math.isclose(data["B"]["std"], math.sqrt(8 / 3))
+assert data["C"]["count"] == 2
+assert data["C"]["mean"] == 6
+assert data["C"]["median"] == 6
+assert math.isclose(data["C"]["std"], 1)
+PY
+
+if python3 "$PROJECT/solution.py" "$TMP/missing.csv" > "$TMP/missing.out" 2> "$TMP/missing.err"; then
+  echo "missing input unexpectedly succeeded" >&2
+  exit 1
+fi
+test -s "$TMP/missing.err"
+if find "$PROJECT" -type f \( -name Cargo.toml -o -name '*.rs' \) -print -quit | grep -q .; then
+  echo "non-TUI Python task created a Rust project" >&2
+  exit 1
+fi
+echo "Python CSV acceptance passed."

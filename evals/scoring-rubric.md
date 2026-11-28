@@ -1,28 +1,32 @@
-# Scoring rubric
+# Evaluation scoring rubric
 
-Each trial is scored 0-10 on each dimension. A trial's total is the sum.
+Use this rubric for human review. Record objective checks separately; do not infer them from a reviewer's impression.
+
+Score each dimension from 0 to 2:
 
 | Dimension | 0 | 1 | 2 |
 |---|---|---|---|
-| Compiles | No | With warnings | Clean |
-| API correctness | Stale/invented APIs | Minor issues | Current APIs only |
-| Terminal lifecycle | Broken or missing | Partial | Correct init/restore |
-| Keyboard | Dead or wrong keys | Partial | All documented keys work |
-| Resize | Panics or corrupts | Degrades poorly | Graceful at all sizes |
-| States | Missing | Partial | Empty/loading/error/too-small all present |
-| Architecture | Monolithic | Mixed | State/ui separated |
-| Tests | None or trivial | Superficial | Meaningful behavioral tests |
-| Complexity | Over-engineered | Reasonable | Minimal and clear |
-| Skill adherence | Ignored skill | Partial | Followed workflow |
+| Functional acceptance | Required behavior missing | Partially implemented | All stated behavior verified |
+| API and version correctness | Incorrect or incompatible | Minor issues | Correct for fixture dependencies |
+| Terminal lifecycle | Broken or unsafe | Partially handled | Correct setup, exit, and restoration |
+| Keyboard interaction | Broken or undiscoverable | Partially correct | Documented behavior works |
+| Resize and layout | Panics or unusable | Degrades awkwardly | Works at specified sizes |
+| State and error handling | Important states missing | Partial handling | Relevant states handled clearly |
+| Architecture | Unnecessarily coupled or complex | Adequate | Clear, proportionate, maintainable |
+| Tests | Missing or ineffective | Partial coverage | Meaningful behavior is tested |
+| Scope discipline | Unrelated rewrites or dependencies | Some avoidable churn | Minimal changes appropriate to task |
+| Verification quality | Claims without evidence | Partial evidence | Reproducible checks and honest report |
 
-## Pass threshold
+Maximum: 20 points.
 
-A trial passes if total >= 14/20 and compiles (score >= 1 on "Compiles").
+## No universal pass threshold
 
-## Skill vs no-skill comparison
+A task can have a critical acceptance criterion that must pass regardless of total score. A high subjective score must not compensate for a build failure or missing required behavior.
 
-Report:
-- Pass rate (skill) vs pass rate (no skill)
-- Mean score difference
-- Specific failure modes unique to each condition
-- Token/cost overhead of skill-enabled runs
+For each trial, record the task and fixture commit, skill condition and hash, model/provider/settings, reviewer and date, objective check results, per-dimension scores, critical failures, and rationale for non-obvious scores.
+
+## Comparison
+
+Report skill and baseline outcomes per task, not only pooled averages. Include completion and timeout rates, build/test/acceptance rates, human score distributions, condition-specific failures, token/latency/cost overhead when available, and negative-trigger behavior.
+
+Do not claim statistical significance from a small sample. Do not label ungraded trials as passes.

@@ -4,6 +4,10 @@
 
 use std::io;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread;
 use std::time::SystemTime;
 
 use crate::action::Action;
@@ -59,20 +63,44 @@ pub struct Entry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Preview {
     Empty,
+    Loading,
     Binary,
     Error(String),
-    Dir {
-        names: Vec<String>,
-        total: usize,
-        truncated: bool,
-    },
-    Text {
-        lines: Vec<String>,
-        truncated: bool,
-    },
+    Dir { names: Vec<String>, total: usize },
+    Text { lines: Vec<String>, truncated: bool },
 }
 
-#[derive(Debug)]
+struct PreviewJob {
+    request: u64,
+    path: PathBuf,
+    kind: EntryKind,
+    cancelled: Arc<AtomicBool>,
+}
+
+fn spawn_preview_worker() -> (Sender<PreviewJob>, Receiver<(u64, Preview)>) {
+    let (job_tx, job_rx) = mpsc::channel::<PreviewJob>();
+    let (result_tx, result_rx) = mpsc::channel::<(u64, Preview)>();
+
+    thread::spawn(move || {
+        while let Ok(job) = job_rx.recv() {
+            if job.cancelled.load(AtomicOrdering::Relaxed) {
+                continue;
+            }
+            let Some(preview) = fs::preview_cancellable(&job.path, job.kind, &job.cancelled) else {
+                continue;
+            };
+            if job.cancelled.load(AtomicOrdering::Relaxed) {
+                continue;
+            }
+            if result_tx.send((job.request, preview)).is_err() {
+                break;
+            }
+        }
+    });
+
+    (job_tx, result_rx)
+}
+
 pub struct State {
     dir: PathBuf,
     entries: Vec<Entry>,
@@ -85,6 +113,10 @@ pub struct State {
     show_hidden: bool,
     sort: SortKey,
     preview: Preview,
+    preview_tx: Sender<PreviewJob>,
+    preview_rx: Receiver<(u64, Preview)>,
+    preview_cancel: Option<Arc<AtomicBool>>,
+    preview_request: u64,
     status: Option<String>,
     page_size: usize,
     quit: bool,
@@ -94,6 +126,7 @@ impl State {
     pub fn open(dir: PathBuf) -> io::Result<Self> {
         let dir = dir.canonicalize()?;
         let entries = fs::read_dir(&dir)?;
+        let (preview_tx, preview_rx) = spawn_preview_worker();
         let mut state = Self {
             dir,
             entries,
@@ -104,6 +137,10 @@ impl State {
             show_hidden: false,
             sort: SortKey::Name,
             preview: Preview::Empty,
+            preview_tx,
+            preview_rx,
+            preview_cancel: None,
+            preview_request: 0,
             status: None,
             page_size: 10,
             quit: false,
@@ -288,10 +325,54 @@ impl State {
     }
 
     fn refresh_preview(&mut self) {
-        self.preview = match self.selected_entry() {
-            Some(entry) => fs::preview(&self.dir.join(&entry.name), entry.kind),
-            None => Preview::Empty,
+        if let Some(cancelled) = self.preview_cancel.take() {
+            cancelled.store(true, AtomicOrdering::Relaxed);
+        }
+        self.preview_request = self.preview_request.wrapping_add(1);
+        let request = self.preview_request;
+
+        let Some((path, kind)) = self
+            .selected_entry()
+            .map(|entry| (self.dir.join(&entry.name), entry.kind))
+        else {
+            self.preview = Preview::Empty;
+            return;
         };
+
+        let cancelled = Arc::new(AtomicBool::new(false));
+        self.preview = Preview::Loading;
+        self.preview_cancel = Some(cancelled.clone());
+
+        if self
+            .preview_tx
+            .send(PreviewJob {
+                request,
+                path,
+                kind,
+                cancelled,
+            })
+            .is_err()
+        {
+            self.preview = Preview::Error("preview worker stopped".to_owned());
+            self.preview_cancel = None;
+        }
+    }
+
+    pub fn poll_preview(&mut self) {
+        while let Ok((request, preview)) = self.preview_rx.try_recv() {
+            if request == self.preview_request {
+                self.preview = preview;
+                self.preview_cancel = None;
+            }
+        }
+    }
+}
+
+impl Drop for State {
+    fn drop(&mut self) {
+        if let Some(cancelled) = self.preview_cancel.take() {
+            cancelled.store(true, AtomicOrdering::Relaxed);
+        }
     }
 }
 
@@ -346,6 +427,17 @@ mod tests {
 
     fn names(s: &State) -> Vec<&str> {
         s.visible_entries().map(|e| e.name.as_str()).collect()
+    }
+
+    fn wait_for_preview(state: &mut State) -> Result {
+        for _ in 0..200 {
+            state.poll_preview();
+            if !matches!(state.preview(), Preview::Loading) {
+                return Ok(());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        Err("preview worker did not finish".into())
     }
 
     #[test]
@@ -417,6 +509,7 @@ mod tests {
         let fx = Fixture::new("nav")?;
         let mut s = fx.state()?;
         s.update(Action::Enter);
+        wait_for_preview(&mut s)?;
         assert_eq!(names(&s), ["inner.txt"]);
         assert_eq!(
             s.preview(),
@@ -426,6 +519,7 @@ mod tests {
             }
         );
         s.update(Action::Parent);
+        wait_for_preview(&mut s)?;
         assert_eq!(s.selected_entry().map(|e| e.name.as_str()), Some("Alpha"));
         Ok(())
     }
@@ -452,6 +546,30 @@ mod tests {
         assert_eq!(s.preview(), &Preview::Empty);
         s.update(Action::MoveDown);
         s.update(Action::Enter);
+        Ok(())
+    }
+
+    #[test]
+    fn large_directory_preview_runs_in_the_background() -> Result {
+        let fx = Fixture::new("async-preview")?;
+        let large = fx.0.join("large");
+        std::fs::create_dir(&large)?;
+        for index in 0..50_000 {
+            std::fs::write(large.join(format!("entry-{index:05}")), b"")?;
+        }
+
+        let mut state = fx.state()?;
+        state.update(Action::MoveDown);
+        assert!(matches!(state.preview(), Preview::Loading));
+        wait_for_preview(&mut state)?;
+
+        match state.preview() {
+            Preview::Dir { names, total } => {
+                assert_eq!(*total, 50_000);
+                assert_eq!(names.len(), 200);
+            }
+            other => panic!("expected completed directory preview, got {other:?}"),
+        }
         Ok(())
     }
 

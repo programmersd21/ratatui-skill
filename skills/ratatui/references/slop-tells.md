@@ -1,126 +1,97 @@
-# Slop tells
+# Review signals for generated-looking code and interfaces
 
-"Slop" here means output that reads as generated: recognizable on sight, with a gap between what it claims and what it does. Using an AI is not the problem; shipping filler is. `skills/ratatui/scripts/lint-slop.sh` checks the mechanical ones; the rest need judgment.
+"Slop" is not a technical category and cannot be reliably detected by a universal regex. This guide collects signals that deserve review. They are not automatic defects: assess them against the product, audience, existing codebase, and explicit requirements.
 
-Sources for these tells are public discussions of AI-generated projects (a large study of complaints about AI-built sites, Rust forum and project AI policies, a NixOS forum review of a Rust TUI, Hacker News threads). The common thread across them: effort used to be proof of quality, now it is free, so people look for evidence that someone decided things.
+Using AI is not itself a quality problem. The concern is shipping code or interfaces whose claims, behavior, and implementation do not agree.
 
-## UI tells
+The scanner in `scripts/lint-slop.sh` checks only a narrow set of mechanical conventions. It does not detect most of the issues in this guide. Human review and behavioral tests remain necessary.
 
-| Tell | Why it reads as slop | Instead |
+## High-confidence problems
+
+These are defects when they contradict the requested behavior:
+
+| Signal | Why it matters | Better approach |
 |---|---|---|
-| Purple/cyan neon gradient on dark, glow, thick borders | The look every model reaches for | One ANSI accent, dim for secondary |
-| Emoji as icons or in headers | Decoration with no information | Plain text, or a Unicode symbol that carries meaning |
-| A "Ready" dot, a banner, a tagline, a mascot | Marketing inside the tool | Nothing. The tool is the interface |
-| Panels that show nothing real (fake stats, sample rows) | Looks finished, is not | Show real data or no panel |
-| Keys or buttons that do not respond | The most-cited complaint about generated TUIs | Remove it, or make it work |
-| Everything boxed, borders inside borders | No hierarchy | Borders group; whitespace separates |
-| Swapping one default for another | Still a default | State a choice in the design brief and justify it from the data |
-| Polish on the README, none in the program | Effort in the wrong place | Put the effort in the interaction |
+| Fake data presented as live or real | Misleads users | Connect real data or label examples clearly |
+| A documented key or visible control that does nothing | The interface promises behavior it does not provide | Implement it, remove it, or explain why it is unavailable |
+| Placeholder output shipped as completed functionality | The requested work is incomplete | Implement the behavior or report the limitation |
+| Unsupported claims about tests, compatibility, or performance | Reviewers cannot trust the report | State exactly what was measured or run |
+| Ignored errors that can affect correctness | Failures become invisible | Propagate, handle, or report the error |
+| APIs or dependencies chosen without checking the project's versions | Code may not compile or may introduce compatibility problems | Inspect the manifest, lockfile, and version-matched documentation |
+| Destructive behavior without safeguards appropriate to its consequences | Users can lose data unexpectedly | Use confirmation, undo, backups, or another proportionate safeguard |
 
-## Code tells
+## Design signals to question
 
-| Tell | Instead |
-|---|---|
-| Comments that narrate (`// increment counter`) | Comment why, or delete |
-| Chat leftovers ("Here's the updated code", "Certainly!") | Delete |
-| `TODO`, `unimplemented!()`, placeholder strings | Finish it or cut it |
-| `.unwrap()` in non-test code | `?`, or handle the case |
-| `let _ = fallible();`, empty `Err(_) => {}` | Handle or report the error |
-| Generic names (`data`, `item`, `helper`, `utils.rs`) | Name the thing |
-| Hex colors scattered through draw code | Colors by role in `theme.rs` |
-| One 1,500-line `main.rs` | Modules that follow the data flow |
-| Hallucinated crates or methods | Research, then compile (see the checklist) |
-| Boilerplate repeated per widget | One helper, used |
+These are common generic defaults, not universal prohibitions:
 
-## README tells
+| Signal | Why it may be a problem | Questions to ask |
+|---|---|---|
+| Neon gradients, glow, or high-saturation accents | Can obscure hierarchy or look unrelated to the product | Does this palette serve the product and remain readable? |
+| Emoji used as generic icons | Meaning and rendering vary by terminal | Does the symbol communicate clearly in supported terminals? |
+| Decorative banners, taglines, mascots, or badges | May consume space without helping the task | Does this element add information or improve navigation? |
+| Panels with no useful content | Adds visual structure without value | What user decision does this panel support? |
+| Nested borders and repeated separators | Can make dense interfaces harder to scan | Would spacing or a simpler divider work better? |
+| Excessive animation or status indicators | Adds noise and can distract from input | Does motion communicate a real state or progress? |
+| A fixed palette, layout, or spacing scale everywhere | Ignores product-specific constraints | Is this convention useful in this application? |
+| Too much empty space or too much density | Either can slow comprehension | What information should be visible at this size? |
 
-- Emoji headers, a "Features" list of adjectives ("blazing fast", "beautiful").
-- No real command, no real key list.
-- No statement of how it was made. Say plainly if AI helped; one line is enough.
-- Claims the code does not back up.
+## Code and architecture signals to question
+
+| Signal | Why it may be a problem | Better approach |
+|---|---|---|
+| Comments that merely narrate syntax | Adds maintenance noise | Explain intent, invariants, or non-obvious trade-offs |
+| Assistant-style conversational leftovers | Belongs in chat, not source code | Remove it |
+| Unfinished `TODO`, `todo!`, or `unimplemented!` paths | May indicate incomplete behavior | Finish, track, or explicitly scope the work |
+| `.unwrap()` or `.expect()` in application code | May turn recoverable failures into panics | Use error propagation or document a genuine invariant |
+| Broad generic names such as `data` or `helper` | Can hide meaning when used without context | Prefer names that describe the domain or operation |
+| A very large `main.rs` | Can obscure responsibilities in a complex app | Split modules when real boundaries improve understanding |
+| Many tiny modules or wrappers | Can make simple behavior harder to follow | Keep related code together until a useful boundary appears |
+| Hex colors scattered through rendering | Can make visual consistency harder to maintain | Use shared semantic styles when multiple views benefit |
+| Repeated widget boilerplate | Can cause drift | Extract a helper when behavior is genuinely shared |
+| A generic abstraction used only once | Can hide rather than simplify | Keep the direct implementation until reuse or complexity justifies abstraction |
+
+These are prompts for inspection, not a ban list. For example, an `unwrap` may be justified after a proven invariant, and a single-file program may be the clearest design for a small utility.
+
+## Documentation and communication signals
+
+- Feature lists made mostly of adjectives rather than verifiable behavior.
+- Screenshots that do not match the current application.
+- No runnable command or no explanation of key interactions when users need them.
+- Claims of compatibility or production readiness without corresponding checks.
+- Repeated sections that restate the same information.
+- Unclear disclosure of generated or AI-assisted work when provenance matters to the project.
+
+Prefer specific capabilities, real commands, current screenshots, and honest limitations.
 
 ## Before and after
 
-```rust
-// before: decorative, dishonest
-let status = Paragraph::new("● Ready — all systems operational")
-    .style(Style::new().fg(Color::Rgb(0, 255, 136)));
+A status message should report a real state, not decorative confidence:
 
-// after: shows something true, in a themed role, only when there is something to say
+```rust
 if let Some(message) = state.status() {
     frame.render_widget(Line::styled(message, theme.error), area);
 }
 ```
 
-```rust
-// before: invented placeholder
-let rows = vec!["Item 1", "Item 2", "Item 3"];
+A collection view should represent actual data and have an honest empty state:
 
-// after: real data, with an honest empty state
+```rust
 if entries.is_empty() {
     render_empty(frame, area, "empty directory");
 }
 ```
 
-## Formal anti-slop design standard
+## Human review checklist
 
-### Prohibited decorative defaults
+- Does the implementation satisfy the stated task?
+- Are displayed values and status messages truthful?
+- Does every documented interaction work?
+- Are dependencies and APIs compatible with the project?
+- Are errors handled intentionally?
+- Is the architecture proportionate to the application's complexity?
+- Is the interface readable and useful at the sizes it claims to support?
+- Can any decoration, abstraction, module, or instruction be removed without losing value?
+- Do tests demonstrate behavior rather than merely mirror implementation details?
+- Does the final report distinguish completed checks from unverified work?
 
-Reject unless justified by a real product need:
-
-- Neon purple/cyan gradients
-- Glowing borders
-- Decorative banners
-- Fake status indicators
-- Fake statistics or activity feeds
-- Placeholder rows
-- Empty panels
-- Unnecessary mascots
-- Emoji used as generic icons
-- Nested borders everywhere
-- Excessive separators
-- Redundant headings
-- Marketing copy inside developer tools
-- Unnecessary welcome screens
-- Fake loading indicators
-- Decorative animations
-- Unnecessary badges
-- Redundant status labels
-
-### Information honesty
-
-Every visible value must be real. No fabricated data, no invented progress, no
-misleading success messages, no hardcoded metrics presented as live information.
-When there is no data, show an honest empty state.
-
-### Typography and copy
-
-- Short, clear labels.
-- Consistent terminology.
-- Sentence-case labels.
-- Concise error messages.
-- No unnecessary slogans.
-- No assistant-style conversational leftovers.
-- No exaggerated marketing adjectives.
-- No redundant explanatory text.
-
-### Product-specific decisions
-
-The agent must decide what information matters most, what users do most
-frequently, what needs immediate attention, and what can be removed. Every
-design choice should have a product reason, not a template default.
-
-### Human review checklist
-
-- Can a first-time user understand the screen?
-- Is the primary content immediately obvious?
-- Does every panel contain useful information?
-- Does every key binding work?
-- Can the interface be used without color?
-- Does resizing preserve usability?
-- Are empty and error states honest?
-- Is the screen too dense or too padded?
-- Can any element be removed without losing information?
-- Does the UI look like a considered product rather than a generic template?
-
-A clean lint scan is not proof of design quality. It is a mechanical guardrail.
+A clean lint scan does not prove design quality. A polished screenshot does not prove behavior. Review the implementation and the evidence together.

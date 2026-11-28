@@ -19,6 +19,7 @@
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
+  <a href="docs/agent-compatibility.md">Agent support</a> ·
   <a href="#what-changes">What changes</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#demo">Demo</a> ·
@@ -38,16 +39,29 @@
 
 AI assistants write ratatui from memory. They reach for old APIs and wrong crate versions, then ship a UI that looks generated: neon defaults, decorative panels, keys that do nothing.
 
-**ratatui-skill** replaces that with a fixed process and a tested template. The assistant looks up what is current, writes a design brief before any code (new apps only), builds from a working codebase, and proves the result before it says "done".
+**ratatui-skill** provides a practical workflow, version-aware research, a working reference template, and verification guidance. The assistant inspects the project, adapts the process to the task, and reports what it actually checked.
 
 ## Quick start
 
-1. Copy the skill into your assistant's skills directory. For Claude Code:
+1. Copy the canonical skill directory into a discovery location supported by your agent. From the root of this repository:
+
+   **Codex, Cursor, Antigravity, and OpenCode:**
 
    ```bash
-   mkdir -p ~/.claude/skills && cp -r skills/ratatui ~/.claude/skills/   # all projects
-   mkdir -p .claude/skills && cp -r skills/ratatui .claude/skills/         # one project
+   mkdir -p /path/to/project/.agents/skills
+   rm -rf /path/to/project/.agents/skills/ratatui
+   cp -a skills/ratatui /path/to/project/.agents/skills/ratatui
    ```
+
+   **Claude Code:**
+
+   ```bash
+   mkdir -p /path/to/project/.claude/skills
+   rm -rf /path/to/project/.claude/skills/ratatui
+   cp -a skills/ratatui /path/to/project/.claude/skills/ratatui
+   ```
+
+   See [agent compatibility and installation](docs/agent-compatibility.md) for global installs and native alternatives.
 
 2. Ask for a terminal UI:
 
@@ -56,19 +70,19 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
    mark them done, delete them, and save to a file so they're still there next time.
    ```
 
-3. Watch it research versions, write a brief, build, and run its own checks.
+3. Watch it inspect the project, choose a proportionate workflow, build, and run relevant checks.
 
-Assistants that read `AGENTS.md` instead of loading skills can use the one at the repo root. It carries the same process in short form and points at the skill files.
+`AGENTS.md` is a concise fallback for agents that read repository instructions but do not discover skills. It does not install or auto-register the skill. See [agent compatibility](docs/agent-compatibility.md) for the supported discovery paths.
 
 ## What changes
 
 | Without the skill | With it |
 |---|---|
-| Versions and APIs written from memory | Newest stable versions looked up and quoted, release notes read, uncertain calls compiled |
-| Design is whatever comes to mind first | A written brief: layout, one accent color, density, keys, every empty, error and too-small state |
+| Versions and APIs written from memory | Resolved versions and project constraints checked; release notes reviewed when versions or recent APIs change |
+| Design choices are implicit | Layout and interactions follow the requirements and displayed data; document decisions when complexity warrants it |
 | Decorative panels, fake data, dead keys | Everything visible works |
-| One long `main.rs` | State with no terminal types, rendering with no side effects, one key table |
-| "Done" with nothing run | fmt, clippy, tests, screen dumps, a real pseudo-terminal run, and a slop scan |
+| Structure chosen without considering scope | Clear state/rendering boundaries and shared key bindings where they reduce coupling or duplication |
+| "Done" with nothing run | Relevant fmt, Clippy and tests; render or terminal integration checks where behavior requires them; honest reporting |
 | Silent about what was skipped | A report that names anything it could not check |
 
 ## How it works
@@ -76,10 +90,10 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 <details open>
 <summary><b>Five steps, in order</b></summary>
 
-1. **Research.** Look up the newest stable version, minimum Rust version, and (when given a manifest) the version resolved by the project of every crate, read the release notes, confirm widget crates match the ratatui version, and compile anything uncertain.
-2. **Design brief.** Before any code: layout archetype, one accent color, density, keys, and what each empty or failed state shows, justified from the app's data.
-3. **Build** from a tested template with a strict split: state with no terminal types, rendering with no side effects, and one key table that drives input, footer hints and help.
-4. **Verify.** `cargo fmt --check`, clippy with warnings denied, tests, text dumps of the screen at several sizes, a run in a real pseudo-terminal, and a slop scan.
+1. **Research.** Check the newest stable and minimum supported versions alongside versions resolved by the project. Preserve existing constraints; review release notes when changing versions or relying on recently changed APIs. Confirm widget crates match the resolved Ratatui version and compile uncertain APIs.
+2. **Design.** For a non-trivial new interface, make the interaction model, layout, keyboard behavior, and relevant empty/error states explicit before implementation. Keep this lightweight for small tasks.
+3. **Build** with the simplest architecture that fits. Use the dirview template as a reference when its structure is relevant; preserve existing project conventions.
+4. **Verify.** Run relevant formatting, Clippy and test checks. Use TestBackend for rendering behavior and PTY or recording-based tests when real terminal interaction matters. Report anything not checked.
 5. **Report honestly,** including anything it could not check.
 
 </details>
@@ -88,10 +102,10 @@ Assistants that read `AGENTS.md` instead of loading skills can use the one at th
 <summary><b>The rules it enforces</b></summary>
 
 - Everything visible works. No fake data, decorative panels or dead keys.
-- One key table drives input, footer hints and the `?` help, so a documented key always works.
+- When input, footer hints, and help repeat the same bindings, keep them in sync through a shared source of truth.
 - Text is measured with `unicode-width`, untrusted text is sanitized, only visible rows are drawn.
-- Colors by role in one file, 16 ANSI colors by default, `NO_COLOR` respected, no forced background, no emoji.
-- No `.unwrap()` outside tests, no swallowed errors, no TODOs, comments say why.
+- Choose colors and visual conventions for the product and terminal environment; support monochrome output when required.
+- Handle errors deliberately and use compiler-visible Clippy lints where a project wants to prohibit specific patterns.
 - Destructive actions confirm. Slow work never blocks the draw loop.
 
 </details>
@@ -109,7 +123,7 @@ cd todo
 TODO_THEME=catppuccin cargo run --bin todo
 ```
 
-The default uses the 16 ANSI colors from your terminal palette. `NO_COLOR` renders monochrome. Source, keys and the file format are in [`todo/README.md`](todo/README.md).
+The demo uses the terminal palette by default and supports `NO_COLOR` for monochrome output. Source, keys and the file format are in [`todo/README.md`](todo/README.md).
 
 ## What's inside
 
@@ -117,7 +131,7 @@ The default uses the 16 ANSI colors from your terminal palette. `NO_COLOR` rende
 AGENTS.md                      the process in short form, for agents without skill support
 assets/                        banner, demo, faq and sponsor images
 docs/                          version-aware distribution proposal
-evals/                         10 evaluation tasks, harness, scoring rubric, results
+evals/                         task suite, paired-run harness, scoring rubric, human-review records
 skills/ratatui/
   SKILL.md                     the process
   references/
@@ -163,11 +177,12 @@ cargo run -- .
 <summary><b>Does it only work with Claude Code?</b></summary>
 <br>
 
-**No. Any assistant that can run commands works.**
+**No. The skill uses the open Agent Skills directory format.**
 
-The skill format is read by assistants that support skills, and anything that
-reads `AGENTS.md` can use the short version at the repo root. The scripts and
-template are plain shell, Python and Rust.
+Codex, Claude Code, Cursor, Antigravity, and OpenCode document compatible
+skill discovery paths. Use the install location listed in
+[`docs/agent-compatibility.md`](docs/agent-compatibility.md). The repository
+has not yet been runtime-smoke-tested in every listed client.
 
 </details>
 
@@ -183,8 +198,8 @@ The versions in this repo are what the template was tested with, ratatui 0.30.2
 on its minimum supported Rust version, 1.88. They are not a promise about what is newest when you read this. The skill
 tells the assistant to:
 
-1. Run `crate-versions.sh` for each dependency.
-2. Read the release notes for the version it returns.
+1. Run `crate-versions.sh` for relevant dependencies.
+2. Preserve project constraints and inspect release notes when changing versions or using recently changed APIs.
 3. Compile any API it is unsure about before using it.
 
 </details>
@@ -195,11 +210,11 @@ tells the assistant to:
 <summary><b>Why a "slop scan"?</b></summary>
 <br>
 
-**Generated UIs are recognizable, so the scanner fails CI on the mechanical tells.**
+**The scanner is deliberately narrow. It is a guardrail, not an AI-slop detector.**
 
-Emoji icons, neon gradients, placeholder rows and comments that narrate the code
-are checked by [`lint-slop.sh`](skills/ratatui/scripts/lint-slop.sh). The rest are
-judgment calls listed in
+It checks a small set of mechanical source conventions. It cannot reliably
+judge visual hierarchy, fake data, unnecessary abstractions, or whether a design
+fits the product. Those require behavior tests and human review. See
 [`references/slop-tells.md`](skills/ratatui/references/slop-tells.md).
 
 </details>

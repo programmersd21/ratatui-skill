@@ -89,6 +89,8 @@ jobs:
         run: bash -n skills/ratatui/scripts/*.sh
       - name: python syntax
         run: python3 -m py_compile skills/ratatui/scripts/pty-smoke.py
+      - name: lint scanner regression tests
+        run: python3 -m unittest discover -s skills/ratatui/scripts -p 'test_*.py'
       - name: crate-versions smoke
         run: skills/ratatui/scripts/crate-versions.sh ratatui | grep -q 'ratatui'
 

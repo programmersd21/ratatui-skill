@@ -1,6 +1,6 @@
 # dirview
 
-A small directory browser. It is the reference template for the `ratatui` skill: copy its structure, replace its domain.
+A small directory browser and reference implementation. Borrow the parts that fit your application; its architecture is not a requirement for other Ratatui projects.
 
     cargo run -- [DIR]
 
@@ -18,7 +18,7 @@ Press `?` inside for the full key list.
 | `s` | Cycle sort: name, size, modified |
 | `q`, Ctrl-c | Quit |
 
-The preview pane appears at 80 columns or wider. Below 40x8 it shows a size message instead of the interface. Setting `NO_COLOR` switches to a monochrome theme.
+The preview pane appears at 80 columns or wider. Below 40x8 it shows a size message instead of the interface. Setting `NO_COLOR` switches to a monochrome theme. Directory previews run on a background worker, cancel when the selection changes, and do not block key handling. Listing the current directory on navigation is still synchronous.
 
 ## Layout
 

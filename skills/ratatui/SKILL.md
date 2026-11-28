@@ -1,127 +1,133 @@
 ---
 name: ratatui
-description: Build or modify terminal UIs in Rust with ratatui. Use for any TUI, terminal dashboard, file browser, log viewer, or "make this CLI interactive" task. Do not use for non-Rust or non-terminal tasks.
+description: Build, modify, debug, or review Rust terminal user interfaces built with Ratatui. Do not use for non-Rust tasks or command-line applications without a terminal UI.
 ---
 
-# ratatui
+# Ratatui
 
-Write terminal UIs that work, look deliberate, and contain no filler.
+Build terminal interfaces that are correct, usable, and appropriate to the project. This skill is a workflow and a set of technical references, not a universal architecture or visual style guide.
 
-Two failures this skill prevents:
+## Choose the workflow
 
-1. **Stale or invented APIs.** ratatui changes between releases. Never write ratatui code from memory.
-2. **Slop.** Default styling nobody chose, decorative panels, fake data, dead keys, narrating comments. If it is on screen it is real.
+Inspect the repository and identify the task first.
 
-All paths below are relative to this skill's installed directory. Locate this
-SKILL.md first, then derive the skill directory:
-`SKILL_DIR=$(dirname "$(realpath <path-to-this-SKILL.md>)")`. Run every bundled
-script through that absolute path. Never assume the working directory is the
-skill or repository root.
+- **New application:** understand requirements, choose the smallest suitable structure, implement, and verify.
+- **Existing application:** inspect relevant modules, conventions, dependencies, and tests. Preserve established design and make the smallest change that solves the task.
+- **Focused widget or layout change:** follow existing state and rendering patterns. Do not introduce application-wide architecture for a local change.
+- **Debugging or review:** reproduce the behavior, inspect the relevant code and dependency versions, then verify the proposed fix.
 
-## Which workflow
+Do not copy the starter template into an existing application.
 
-**New application** (no existing codebase): follow steps 1-5 in full.
+## 1. Inspect and research
 
-**Existing application** (bug fix, small feature, layout tweak): skip the design
-brief unless the change alters the layout archetype. Inspect the existing code
-first. Make the smallest change that fixes the issue. Preserve existing
-dependencies, patterns, and key bindings. Run the existing tests, not new ones
-unless the bug lacks coverage. Do not restructure.
+1. Read the relevant `Cargo.toml`, `Cargo.lock`, workspace configuration, and nearby source.
+2. Identify the Ratatui and terminal-backend versions actually used.
+3. Preserve dependency constraints unless an upgrade is requested or required.
+4. Consult documentation and source matching those versions. The latest release is not automatically compatible.
+5. Check release notes when changing versions or relying on recently changed APIs.
+6. Compile a minimal example when an API remains uncertain.
 
-## 1. Research (before any code)
+The bundled helper compares registry releases with versions resolved by a project:
 
-Run `$SKILL_DIR/scripts/crate-versions.sh ratatui color-eyre unicode-width` plus
-every other crate you plan to use. For an existing project, pass
-`--manifest PATH/TO/Cargo.toml` to report the resolved project version beside
-the latest release. Quote the output. Set `rust-version` in Cargo.toml to the
-highest MSRV among your dependencies.
+```bash
+SKILL_DIR="/path/to/installed/ratatui"
+$SKILL_DIR/scripts/crate-versions.sh ratatui crossterm unicode-width
+$SKILL_DIR/scripts/crate-versions.sh --manifest path/to/Cargo.toml ratatui crossterm
+```
 
-- Check `cargo --version` against each dependency's MSRV. Fix before continuing.
-- Read the ratatui CHANGELOG and BREAKING-CHANGES for your version.
-- Confirm widget crates support your ratatui version (`cargo tree -d`).
-- If the app handles terminal events directly, declare `crossterm` as a direct
-  dependency at the version compatible with Ratatui. Import from
-  `crossterm::event` and verify `cargo tree -d` has no duplicate versions.
-- Uncertain API: write a ten-line program and compile it.
+Treat its output as a starting point, not a substitute for compatibility checks.
 
-See `references/research-checklist.md` for pitfalls found in practice.
+## 2. Choose an architecture that fits
 
-## 2. Design brief (new apps only)
+Prefer the simplest design that makes behavior understandable and testable.
 
-Write this before any code. Every line justified from the app's actual data.
+Often useful, but not mandatory:
 
-- **Purpose:** one sentence, user, keyboard habits.
-- **Data:** what is shown, how big (10 rows or 100,000?), how it changes.
-- **Layout archetype:** pick one and say why (list+preview, multi-panel,
-  drill-down, dashboard, header+list, popup/overlay).
-- **Accent color:** exactly one ANSI color, what it marks. Secondary text is
-  dim, not a second color.
-- **Density:** compact or roomy, and why.
-- **Modes and keys:** vim-style plus arrows. Never rebind Ctrl-C, Esc, Enter.
-- **States:** empty, loading, failed, too small.
-- **Not doing:** features left out on purpose.
+- Keep application state and state transitions independent of terminal rendering.
+- Keep rendering focused on drawing from state.
+- Separate event translation from application actions when that reduces coupling.
+- Centralize key bindings when input, help, and footer hints share them.
+- Keep I/O and long-running work out of the draw path.
+- Use modules that reflect real responsibilities.
 
-## 3. Build
+Do not impose these patterns on a tiny program when they add more complexity than value. Do not restructure an existing project to match the template.
 
-**New app:** start from `templates/dirview/`. Copy the structure, then
-replace the domain. Rename the crate reference in `main.rs`.
+### Starter template
 
-**Existing app:** do not copy the template. Read the existing code first.
-Make the smallest change. Preserve existing dependencies and patterns.
+`templates/dirview/` is a working example, not a required foundation. Use it when its navigation, state, event, and rendering structure fits. Otherwise borrow only relevant ideas or start smaller. Read its code before copying anything.
 
-| File | Job |
-|---|---|
-| `action.rs` | Enum of everything the user can do |
-| `keymap.rs` | One key table drives input, footer hints, and `?` help |
-| `state.rs` | All state and `State::update(Action)`. No terminal types |
-| `fs.rs` | I/O. No terminal types |
-| `ui/` | Rendering only. Reads state, never changes it |
-| `theme.rs` | Colors by role. The only file that names a color |
-| `event.rs`, `app.rs`, `main.rs` | Input, loop, startup |
+## 3. Build for the actual interface
 
-Rules:
+Derive layout, interaction, and visual choices from the requirements and data being displayed.
 
-- Everything visible works. No fake data, dead keys, placeholder rows.
-- Measure text with `unicode-width`, never `.len()`. Sanitize untrusted text.
-- Build only rows on screen. Cost per frame must not grow with data.
-- 16 ANSI colors by default. Respect `NO_COLOR`. No forced background.
-- One border style, plain Unicode, no emoji.
-- Handle every state: empty, error, loading, too small, resize.
-- Destructive actions confirm. Slow work never blocks the draw loop.
-- `color-eyre` in `main`, typed errors in the library, no swallowed results.
-- Comments say why, not what. No TODOs, no commented-out code.
+Consider where relevant:
 
-## 4. Verify
+- Clear hierarchy and useful information density.
+- Discoverable keyboard behavior.
+- Terminal resizing and small dimensions.
+- Empty, loading, success, and error states.
+- Long text, Unicode width, and untrusted terminal text.
+- Focus and selection visibility.
+- Color and monochrome terminals, including `NO_COLOR`.
+- Cancellation and recovery from failures.
+- Large datasets and bounded or incremental work.
+
+These are design considerations, not a mandate to include every state or feature. Avoid decoration that does not help users understand or operate the interface. Do not present fake data as real functionality.
+
+## 4. Keep the UI responsive
+
+Rendering should not perform avoidable blocking work. For expensive operations, choose an approach appropriate to the workload: precompute, cache, paginate, bound, move work off the draw path, or show progress. Do not add asynchronous machinery to trivial operations without a demonstrated need.
+
+Measure before making performance claims.
+
+## 5. Test behavior at the right level
+
+1. **State and logic:** unit-test transitions, filtering, sorting, selection, and errors without a terminal.
+2. **Rendering:** use Ratatui's `TestBackend` for layout, clipping, styles, and important visible states. Test representative sizes where responsiveness matters.
+3. **Terminal integration:** use a PTY, VHS, Betamax, or equivalent when lifecycle, keyboard input, terminal restoration, or resizing is part of the behavior.
+4. **Manual review:** inspect hierarchy, readability, and awkward edge cases.
+
+Do not snapshot every frame by default. Prefer assertions about meaningful behavior and visible state. A process-start smoke test alone does not establish that an interactive application works.
+
+## 6. Verify the change
+
+Run checks appropriate to the workspace and affected packages:
 
 ```bash
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test
+cargo build
 ```
 
-Then:
+Use `--manifest-path` or package selection for workspaces and scoped changes. Do not claim a check passed if it was not run.
 
-1. **Render checks where they add value.** Use `TestBackend` at 40x8, 80x24,
-   and 200x60 for clipping, alignment and responsive layout. Prefer state-based
-   assertions for behavior; do not snapshot every screen by default.
-2. **Terminal integration.** Use VHS/Betamax recordings or a PTY smoke test
-   for lifecycle, resize and key handling. Startup/exit alone does not prove
-   screen content. `$SKILL_DIR/scripts/pty-smoke.py PATH/TO/BINARY`. Universal
-   checks run by default (startup, alternate screen, tiny terminal, clean exit
-   via Ctrl-C). Add `--quit-keys`, `--keys`, `--tiny-text`, `--check-ctrl-c`,
-   `--check-color`, `--check-resize` for app-specific checks.
-3. **Slop scan.** `$SKILL_DIR/scripts/lint-slop.sh PROJECT_DIR` must print
-   `clean`.
+The bundled PTY helper is available when a real terminal smoke test is useful:
 
-If a check cannot run, say which and why. Do not report success for unrun checks.
+```bash
+SKILL_DIR="/path/to/installed/ratatui"
+$SKILL_DIR/scripts/pty-smoke.py PATH/TO/BINARY
+```
 
-## 5. Report
+Use its app-specific options as needed. The style scanner is heuristic, not a correctness analyzer:
 
-Say what was built, versions used, which checks passed, and anything unverified.
-Keep it short. Do not recap the steps.
+```bash
+SKILL_DIR="/path/to/installed/ratatui"
+$SKILL_DIR/scripts/lint-slop.sh PROJECT_DIR
+```
+
+Compiler-visible lints belong in Clippy. Human review is still needed for architecture, error handling, and visual quality.
+
+## 7. Report honestly
+
+Summarize what changed, important dependency/API decisions, checks actually run, relevant behavior verified, and anything not tested or uncertain.
+
+Never report unrun checks as passing.
 
 ## References
 
-- `references/research-checklist.md`: version and API research, pitfalls
-- `references/ux-principles.md`: layouts, keys, color, responsiveness
-- `references/slop-tells.md`: what reads as generated, with before/after
+Read only what the task needs:
+
+- `references/research-checklist.md`: version and API research.
+- `references/ux-principles.md`: interface design and terminal usability.
+- `references/slop-tells.md`: visual and textual patterns worth reviewing.
