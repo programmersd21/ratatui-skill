@@ -43,7 +43,7 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
 
 ## Quick start
 
-1. Copy the canonical skill directory into a discovery location supported by your agent. From the directory containing this repository:
+1. Copy the canonical skill directory into a discovery location supported by your agent. From the root of this repository:
 
    **Codex, Cursor, Antigravity, and OpenCode:**
 
@@ -88,7 +88,7 @@ AI assistants write ratatui from memory. They reach for old APIs and wrong crate
 <details open>
 <summary><b>Five steps, in order</b></summary>
 
-1. **Research.** Look up the newest stable version, minimum Rust version, and (when given a manifest) the version resolved by the project of every crate, read the release notes, confirm widget crates match the ratatui version, and compile anything uncertain.
+1. **Research.** Check the newest stable and minimum supported versions alongside versions resolved by the project. Preserve existing constraints; review release notes when changing versions or relying on recently changed APIs. Confirm widget crates match the resolved Ratatui version and compile uncertain APIs.
 2. **Design.** For a non-trivial new interface, make the interaction model, layout, keyboard behavior, and relevant empty/error states explicit before implementation. Keep this lightweight for small tasks.
 3. **Build** with the simplest architecture that fits. Use the dirview template as a reference when its structure is relevant; preserve existing project conventions.
 4. **Verify.** Run relevant formatting, Clippy and test checks. Use TestBackend for rendering behavior and PTY or recording-based tests when real terminal interaction matters. Report anything not checked.
@@ -196,8 +196,8 @@ The versions in this repo are what the template was tested with, ratatui 0.30.2
 on its minimum supported Rust version, 1.88. They are not a promise about what is newest when you read this. The skill
 tells the assistant to:
 
-1. Run `crate-versions.sh` for each dependency.
-2. Read the release notes for the version it returns.
+1. Run `crate-versions.sh` for relevant dependencies.
+2. Preserve project constraints and inspect release notes when changing versions or using recently changed APIs.
 3. Compile any API it is unsure about before using it.
 
 </details>
