@@ -3,10 +3,11 @@
 ## Context
 
 language: rust
-fixture: dirview
+fixture: dirview-filter-reset
 
-The dirview template has a bug: when filtering, the selected entry jumps to
-index 0 instead of staying on the current entry. Fix it.
+The task fixture deliberately resets selection to index 0 on every filter
+keystroke. Fix it so filtering preserves the selected entry when it remains
+visible, and otherwise selects the nearest valid entry.
 
 ## Acceptance criteria
 
