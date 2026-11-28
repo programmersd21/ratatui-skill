@@ -78,6 +78,7 @@ finally:
 PYDB
 fi
 
+export RUSTUP_HOME="${RUSTUP_HOME:-$ORIGINAL_HOME/.rustup}"
 export HOME="$ISOLATED_HOME"
 export XDG_CONFIG_HOME="$ISOLATED_XDG_CONFIG"
 export XDG_DATA_HOME="$ISOLATED_XDG_DATA"
@@ -153,6 +154,27 @@ TOML
     ;;
   dirview)
     cp -a "$REPO_ROOT/skills/ratatui/templates/dirview/." "$PROJECT/"
+    ;;
+  dirview-filter-reset)
+    cp -a "$REPO_ROOT/skills/ratatui/templates/dirview/." "$PROJECT/"
+    python3 - "$PROJECT/src/state.rs" <<'PYFIXTURE'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+source = path.read_text(encoding="utf-8")
+old = """            Action::FilterInput(c) => {
+                self.filter.push(c);
+                self.rebuild(self.selected_name());
+            }"""
+new = """            Action::FilterInput(c) => {
+                self.filter.push(c);
+                self.rebuild(None);
+            }"""
+if old not in source:
+    raise SystemExit("could not seed the task-specific filter-selection regression")
+path.write_text(source.replace(old, new, 1), encoding="utf-8")
+PYFIXTURE
     ;;
   todo)
     cp -a "$REPO_ROOT/todo/." "$PROJECT/"
@@ -298,7 +320,7 @@ ACCEPTANCE_PASS="unverified"
 ACCEPTANCE_DETAILS=""
 if [ -x "$ACCEPTANCE_SCRIPT" ]; then
   set +e
-  ACCEPTANCE_OUTPUT=$("$ACCEPTANCE_SCRIPT" "$PROJECT" 2>&1)
+  ACCEPTANCE_OUTPUT=$(timeout "$CHECK_TIMEOUT" "$ACCEPTANCE_SCRIPT" "$PROJECT" 2>&1)
   ACCEPTANCE_STATUS=$?
   set -e
   if [ "$ACCEPTANCE_STATUS" -eq 0 ]; then ACCEPTANCE_PASS="true"; else ACCEPTANCE_PASS="false"; fi
