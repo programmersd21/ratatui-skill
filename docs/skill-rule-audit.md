@@ -44,8 +44,6 @@ For each substantial rule:
 
 Do not cite a project preference as a Ratatui requirement. An accepted implementation is not necessarily the only valid implementation.
 
-## Evaluation status
+## Optional evaluation tooling
 
-The repository has ten task specifications and a trial harness. The committed results do not currently establish that the skill improves Rust task outcomes: the recorded Rust generation trial timed out, and the completed comparison concerns a non-Ratatui task. See `evals/results/summary.md`.
-
-The harness stages existing-project fixtures and distinguishes automated acceptance from ungraded trials. The current trial runner records operator-supplied model metadata, the task specification hash, repository commit, and skill content hash. Do not claim skill effectiveness until comparable real-model trials have been completed and reviewed.
+The repository includes task specifications and a trial harness for maintainers who want to study skill effectiveness. These tools are optional and are not required for normal use, CI, or release readiness. The harness stages existing-project fixtures and distinguishes automated acceptance from ungraded trials. No measured effectiveness claim is made.
