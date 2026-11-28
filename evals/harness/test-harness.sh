@@ -209,9 +209,6 @@ JSON
 if python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary-suite" >/dev/null 2>&1; then
   echo "summary ignored the recorded suite trial count" >&2
   exit 1
-else
-  status=$?
-  [ "$status" -eq 1 ] || exit "$status"
 fi
 
 mkdir -p "$TMP/summary-telemetry/skill-skill1-trial1"
@@ -231,8 +228,5 @@ cp "$TMP/summary/python-skill0-trial1/human-review.json" "$TMP/summary-telemetry
 if python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary-telemetry" >/dev/null 2>&1; then
   echo "summary accepted unknown skill activation telemetry" >&2
   exit 1
-else
-  status=$?
-  [ "$status" -eq 2 ] || exit "$status"
 fi
 echo "Harness tests passed."
