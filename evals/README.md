@@ -1,6 +1,6 @@
 # Evaluation suite
 
-This suite is intended to measure whether the Ratatui skill improves agent results. The harness is a reproducible runner, not evidence of effectiveness by itself.
+This is an optional evaluation toolkit for maintainers who want to compare agent results. It is not part of normal skill installation, use, or CI, and running it is not required to use or merge routine skill improvements. The harness is a reproducible runner, not evidence of effectiveness by itself.
 
 ## Current status
 
@@ -12,9 +12,9 @@ This suite is intended to measure whether the Ratatui skill improves agent resul
 
 See results/summary.md for the actual result state and limitations.
 
-## Run a paired evaluation
+## Optional: run a paired evaluation
 
-The harness requires OpenCode, a configured provider credential, and an explicit provider/model ID. EVAL_MODEL is passed to OpenCode as --model, not merely recorded as a label.
+Only run this when you intentionally want a controlled model comparison. It requires OpenCode, a configured provider credential, and an explicit provider/model ID. EVAL_MODEL is passed to OpenCode as --model, not merely recorded as a label.
 
 ~~~bash
 EVAL_MODEL="provider/model-id" \
@@ -23,7 +23,7 @@ EVAL_MODEL_SETTINGS="temperature=0;reasoning=high" \
 bash evals/harness/run-suite.sh 3 600
 ~~~
 
-Three repetitions across ten tasks create 60 model runs: ten tasks, two conditions, and three repetitions. Use fewer repetitions for a smoke run, but do not treat one run as evidence of improvement.
+Three repetitions across ten tasks create 60 model runs. This is an optional research exercise, not a release gate. A smaller smoke run checks mechanics only and cannot establish effectiveness.
 
 The optional third argument selects an output directory outside the repository:
 
@@ -35,7 +35,7 @@ EVAL_PROVIDER and EVAL_MODEL_SETTINGS are operator-supplied descriptive labels. 
 
 The suite randomizes baseline/skill order within each task repetition. It writes schedule.tsv and suite.json with the seed, schedule hash, repository commit, model metadata, and task hashes. Set EVAL_ORDER_SEED to reproduce the schedule order.
 
-## One trial
+## Optional: one trial
 
 ~~~bash
 EVAL_MODEL="provider/model-id" bash evals/harness/run-trial.sh evals/tasks/02-add-widget.md 1 /tmp/widget-skill 600
@@ -52,7 +52,7 @@ The runner fails when it finds a machine-wide Ratatui skill in the known OpenCod
 
 The agent's newline-delimited JSON events are retained. A direct root-session skill tool call naming ratatui is counted as activation. Baseline calls are counted as leakage. OpenCode does not expose all child-session tool events in its root event stream, so delegated activation is recorded as unverified, not guessed. If telemetry is unverified, the suite remains incomplete.
 
-## Human review
+## Optional human review
 
 Automated acceptance does not replace code and behavior review. Copy the template into each trial directory and complete it:
 
@@ -84,4 +84,4 @@ Keep objective checks and human judgments separate. Do not collapse every dimens
 
 ## Limitations
 
-The harness currently supports OpenCode only. Other agent integrations require separate runners and runtime validation. A successful process exit is not proof of a successful task. Tasks without deterministic acceptance are ungraded until reviewed. Skill activation through child agents may remain unverified if the runtime does not expose those events.
+The optional harness currently supports OpenCode only. Other agent integrations require separate runners and runtime validation. A successful process exit is not proof of a successful task. Tasks without deterministic acceptance are ungraded until reviewed. Skill activation through child agents may remain unverified if the runtime does not expose those events.
