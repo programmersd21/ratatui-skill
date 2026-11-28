@@ -203,7 +203,9 @@ grep -A4 'Action::FilterInput(c)' "$TMP/filter-fixture/project/src/state.rs" | g
 mkdir -p "$TMP/summary-suite/python-skill0-trial1"
 cp "$TMP/summary/python-skill0-trial1/result.json" "$TMP/summary-suite/python-skill0-trial1/result.json"
 cp "$TMP/summary/python-skill0-trial1/human-review.json" "$TMP/summary-suite/python-skill0-trial1/human-review.json"
-printf '%s\\n' '{"expected_trials":2}' > "$TMP/summary-suite/suite.json"
+cat > "$TMP/summary-suite/suite.json" <<'JSON'
+{"expected_trials":2}
+JSON
 if python3 "$ROOT/evals/harness/summarize-results.py" "$TMP/summary-suite" >/dev/null 2>&1; then
   echo "summary ignored the recorded suite trial count" >&2
   exit 1
