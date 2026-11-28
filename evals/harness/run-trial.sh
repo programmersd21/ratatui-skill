@@ -169,6 +169,7 @@ old = """            Action::FilterInput(c) => {
             }"""
 new = """            Action::FilterInput(c) => {
                 self.filter.push(c);
+                self.selected = 0;
                 self.rebuild(None);
             }"""
 if old not in source:
