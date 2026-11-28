@@ -232,7 +232,8 @@ if PATH="$TMP/bin:$PATH" MOCK_BEHAVIOR=fail OPENCODE_BIN="$MOCK" bash "$ROOT/eva
   echo "expected fixture mock failure was not reported" >&2
   exit 1
 fi
-grep -A3 'Action::FilterInput(c)' "$TMP/filter-fixture/project/src/state.rs" | grep -q 'self.rebuild(None)'
+grep -A3 'Action::FilterInput(c)' "$TMP/filter-fixture/project/src/state.rs" | grep -q 'self.selected = 0'
+grep -A4 'Action::FilterInput(c)' "$TMP/filter-fixture/project/src/state.rs" | grep -q 'self.rebuild(None)'
 python3 - "$TMP/fixture/result.json" <<'PY'
 import json, pathlib, sys
 data = json.loads(pathlib.Path(sys.argv[1]).read_text())
